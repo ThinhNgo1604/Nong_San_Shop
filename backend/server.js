@@ -104,6 +104,21 @@ app.get("/", (req, res) => {
     });
 });
 
+app.get("/api", (req, res) => {
+    res.json({
+        message: "🚀 Server API đang chạy thành công!"
+    });
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error("Server Error:", err);
+    res.status(err.status || 500).json({
+        message: err.message || "Lỗi hệ thống không xử lý được",
+        error: process.env.NODE_ENV === "development" ? err : {}
+    });
+});
+
 const PORT = process.env.BACKEND_PORT || 5000;
 
 if (process.env.NODE_ENV !== "production" || require.main === module) {

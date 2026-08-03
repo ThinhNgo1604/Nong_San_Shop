@@ -70,38 +70,47 @@ const mockStore = {
     DiaChi: []
 };
 
-// Hàm đồng bộ Firebase Firestore
+// Hàm đồng bộ Firebase Firestore (Chạy bất đồng bộ, có Timeout 2s để không làm treo Serverless Vercel)
 async function syncFirebaseWithStore() {
     try {
         console.log("🔥 Kết nối và đồng bộ dữ liệu với Firebase Firestore...");
         const tables = ["TaiKhoan", "KhachHang", "DanhMuc", "SanPham", "Voucher", "DonHang", "ChiTietDonHang", "ThongBao", "DanhGia", "DiaChi"];
         
-        for (const tableName of tables) {
-            const snap = await getDocs(collection(db, tableName));
-            if (snap.empty) {
-                // Nếu Firestore trống, khởi tạo dữ liệu mẫu lên Firestore
-                if (mockStore[tableName] && mockStore[tableName].length > 0) {
-                    console.log(`🔥 Đang khởi tạo bảng ${tableName} lên Firebase Firestore...`);
-                    for (const item of mockStore[tableName]) {
-                        const idKey = item.MaTK ? 'MaTK' : item.MaSP ? 'MaSP' : item.MaDM ? 'MaDM' : item.MaVoucher ? 'MaVoucher' : item.MaDH ? 'MaDH' : item.MaKH ? 'MaKH' : item.MaTB ? 'MaTB' : item.MaDG ? 'MaDG' : item.MaDC ? 'MaDC' : null;
-                        const docId = idKey && item[idKey] ? String(item[idKey]) : (item.id || String(Math.random()));
-                        await setDoc(doc(db, tableName, docId), JSON.parse(JSON.stringify(item)));
+        const fetchPromises = tables.map(async (tableName) => {
+            try {
+                const snap = await getDocs(collection(db, tableName));
+                if (!snap.empty) {
+                    const list = [];
+                    snap.forEach(docSnap => {
+                        list.push(docSnap.data());
+                    });
+                    if (list.length > 0) {
+                        mockStore[tableName] = list;
+                    }
+                } else {
+                    if (mockStore[tableName] && mockStore[tableName].length > 0) {
+                        Promise.allSettled(
+                            mockStore[tableName].map(item => {
+                                const idKey = item.MaTK ? 'MaTK' : item.MaSP ? 'MaSP' : item.MaDM ? 'MaDM' : item.MaVoucher ? 'MaVoucher' : item.MaDH ? 'MaDH' : item.MaKH ? 'MaKH' : item.MaTB ? 'MaTB' : item.MaDG ? 'MaDG' : item.MaDC ? 'MaDC' : null;
+                                const docId = idKey && item[idKey] ? String(item[idKey]) : (item.id || String(Math.random()));
+                                return setDoc(doc(db, tableName, docId), JSON.parse(JSON.stringify(item)));
+                            })
+                        ).catch(() => {});
                     }
                 }
-            } else {
-                // Nếu trên Firestore đã có dữ liệu, load về mockStore
-                const list = [];
-                snap.forEach(docSnap => {
-                    list.push(docSnap.data());
-                });
-                if (list.length > 0) {
-                    mockStore[tableName] = list;
-                }
+            } catch (err) {
+                console.warn(`Lỗi sync table ${tableName}:`, err.message);
             }
-        }
-        console.log("✅ Đồng bộ Firebase Firestore hoàn tất thành công!");
+        });
+
+        await Promise.race([
+            Promise.allSettled(fetchPromises),
+            new Promise(resolve => setTimeout(resolve, 2000))
+        ]);
+
+        console.log("✅ Đồng bộ / Kiểm tra Firebase Firestore hoàn tất!");
     } catch (err) {
-        console.warn("⚠️ Lưu ý đồng bộ Firebase (vẫn chạy offline được):", err.message);
+        console.warn("⚠️ Lưu ý đồng bộ Firebase (dùng mock data làm fallback):", err.message);
     }
 }
 
@@ -192,11 +201,13 @@ function createMockPool() {
 
                     // --- SELECT SANPHAM ---
                     if (q.includes("FROM SANPHAM")) {
-                        let list = mockStore.SanPham.filter(s => s.TrangThai);
-                        if (inputs.MaSP) list = list.filter(s => s.MaSP === Number(inputs.MaSP));
-                        if (inputs.MaDM) list = list.filter(s => s.MaDM === Number(inputs.MaDM));
-                        if (inputs.minPrice) list = list.filter(s => s.DonGia >= Number(inputs.minPrice));
-                        if (inputs.maxPrice) list = list.filter(s => s.DonGia <= Number(inputs.maxPrice));
+                        let list = mockStore.SanPham.filter(s => 
+                            s.TrangThai === undefined || s.TrangThai === true || s.TrangThai === 1 || String(s.TrangThai) === "1" || String(s.TrangThai) === "true"
+                        );
+                        if (inputs.MaSP) list = list.filter(s => Number(s.MaSP) === Number(inputs.MaSP));
+                        if (inputs.MaDM) list = list.filter(s => Number(s.MaDM) === Number(inputs.MaDM));
+                        if (inputs.minPrice) list = list.filter(s => Number(s.DonGia) >= Number(inputs.minPrice));
+                        if (inputs.maxPrice) list = list.filter(s => Number(s.DonGia) <= Number(inputs.maxPrice));
                         
                         if (q.includes("COUNT(*) AS TOTAL")) {
                             return { recordset: [{ Total: list.length }] };
@@ -264,9 +275,16 @@ let syncPromise = null;
 
 async function connectDB() {
     if (!syncPromise) {
-        syncPromise = syncFirebaseWithStore();
+        syncPromise = Promise.race([
+            syncFirebaseWithStore(),
+            new Promise(resolve => setTimeout(resolve, 1500))
+        ]);
     }
-    await syncPromise;
+    try {
+        await syncPromise;
+    } catch (e) {
+        // Ignored timeout error
+    }
 
     if (process.env.ENABLE_MSSQL_CONNECT) {
         if (!poolPromise) {

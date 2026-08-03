@@ -7,7 +7,7 @@ const calculatePrice = require("../utils/priceCalculator");
 const getCartByCustomerId = async (req, res) => {
   try {
     const maTK = req.params.maKH; 
-    const pool = await sql.connect(); 
+    const pool = await connectDB(); 
 
     const khResult = await pool.request()
       .input('MaTK', sql.Int, maTK)
@@ -239,7 +239,7 @@ const checkoutCart = async (req, res) => {
 const addToCart = async (req, res) => {
   try {
     const { maKH: maTK, maSP, soLuong } = req.body;
-    const pool = await sql.connect();
+    const pool = await connectDB();
 
     // 1. Lấy mã Khách Hàng thật từ mã Tài Khoản
     const khResult = await pool.request()
@@ -287,7 +287,7 @@ const mergeCart = async (req, res) => {
       return res.status(200).json({ message: "Không có giỏ hàng tạm để đồng bộ" });
     }
 
-    const pool = await sql.connect();
+    const pool = await connectDB();
 
     const khResult = await pool.request()
       .input('MaTK', sql.Int, maTK)
@@ -329,7 +329,7 @@ const mergeCart = async (req, res) => {
 const removeFromCart = async (req, res) => {
   try {
     const { maKH: maTK, maSP } = req.params;
-    const pool = await sql.connect();
+    const pool = await connectDB();
 
     const khResult = await pool.request()
       .input('MaTK', sql.Int, maTK)

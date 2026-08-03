@@ -80,6 +80,35 @@ const mockStore = {
     ]
 };
 
+function getFirebaseDocId(tableName, item) {
+    if (!item) return String(Math.random());
+    if (tableName === 'DanhGia' && item.MaDG) return String(item.MaDG);
+    if (tableName === 'TaiKhoan' && item.MaTK) return String(item.MaTK);
+    if (tableName === 'KhachHang' && item.MaKH) return String(item.MaKH);
+    if (tableName === 'DanhMuc' && item.MaDM) return String(item.MaDM);
+    if (tableName === 'SanPham' && item.MaSP) return String(item.MaSP);
+    if (tableName === 'Voucher' && (item.MaVoucher || item.MaGG)) return String(item.MaVoucher || item.MaGG);
+    if (tableName === 'DonHang' && item.MaDH) return String(item.MaDH);
+    if (tableName === 'ChiTietDonHang' && item.MaDH && item.MaSP) return `${item.MaDH}_${item.MaSP}`;
+    if (tableName === 'ThongBao' && item.MaTB) return String(item.MaTB);
+    if (tableName === 'DiaChi' && item.MaDC) return String(item.MaDC);
+    if (tableName === 'LichSuDiem' && item.MaLSD) return String(item.MaLSD);
+    if (tableName === 'KhachHang_Voucher' && item.MaKH) return `${item.MaKH}_${item.MaVoucher || item.MaGG || Math.random()}`;
+
+    if (item.MaDG) return String(item.MaDG);
+    if (item.MaLSD) return String(item.MaLSD);
+    if (item.MaTB) return String(item.MaTB);
+    if (item.MaDC) return String(item.MaDC);
+    if (item.MaDH) return String(item.MaDH);
+    if (item.MaVoucher || item.MaGG) return String(item.MaVoucher || item.MaGG);
+    if (item.MaDM) return String(item.MaDM);
+    if (item.MaSP) return String(item.MaSP);
+    if (item.MaKH) return String(item.MaKH);
+    if (item.MaTK) return String(item.MaTK);
+    if (item.id) return String(item.id);
+    return String(Math.random());
+}
+
 // Hàm đồng bộ Firebase Firestore (Chạy bất đồng bộ, có Timeout 2s để không làm treo Serverless Vercel)
 async function syncFirebaseWithStore() {
     try {
@@ -91,8 +120,12 @@ async function syncFirebaseWithStore() {
                 const snap = await getDocs(collection(db, tableName));
                 if (!snap.empty) {
                     const list = [];
-                    snap.forEach(docSnap => {
-                        list.push(docSnap.data());
+                    snap.forEach((docSnap, index) => {
+                        const data = docSnap.data();
+                        if (tableName === 'DanhGia' && !data.MaDG) {
+                            data.MaDG = Number(docSnap.id) || (index + 1);
+                        }
+                        list.push(data);
                     });
                     if (list.length > 0) {
                         mockStore[tableName] = list;
@@ -101,8 +134,7 @@ async function syncFirebaseWithStore() {
                     if (mockStore[tableName] && mockStore[tableName].length > 0) {
                         Promise.allSettled(
                             mockStore[tableName].map(item => {
-                                const idKey = item.MaTK ? 'MaTK' : item.MaSP ? 'MaSP' : item.MaDM ? 'MaDM' : item.MaVoucher ? 'MaVoucher' : item.MaDH ? 'MaDH' : item.MaKH ? 'MaKH' : item.MaTB ? 'MaTB' : item.MaDG ? 'MaDG' : item.MaDC ? 'MaDC' : null;
-                                const docId = idKey && item[idKey] ? String(item[idKey]) : (item.id || String(Math.random()));
+                                const docId = getFirebaseDocId(tableName, item);
                                 return setDoc(doc(db, tableName, docId), JSON.parse(JSON.stringify(item)));
                             })
                         ).catch(() => {});
@@ -127,8 +159,7 @@ async function syncFirebaseWithStore() {
 // Lưu 1 item lên Firebase
 async function syncDocToFirebase(tableName, item) {
     try {
-        const idKey = item.MaTK ? 'MaTK' : item.MaSP ? 'MaSP' : item.MaDM ? 'MaDM' : item.MaVoucher ? 'MaVoucher' : item.MaDH ? 'MaDH' : item.MaKH ? 'MaKH' : item.MaTB ? 'MaTB' : item.MaDG ? 'MaDG' : item.MaDC ? 'MaDC' : null;
-        const docId = idKey && item[idKey] ? String(item[idKey]) : (item.id || String(Math.random()));
+        const docId = getFirebaseDocId(tableName, item);
         await setDoc(doc(db, tableName, docId), JSON.parse(JSON.stringify(item)), { merge: true });
     } catch (err) {
         console.error(`Error syncing ${tableName} to Firebase:`, err.message);
@@ -490,6 +521,7 @@ function createMockPool() {
                         if (q.includes("DELETE FROM")) {
                             if (inputs.MaGG) {
                                 mockStore.Voucher = (mockStore.Voucher || []).filter(v => Number(v.MaGG || v.MaVoucher) !== Number(inputs.MaGG));
+                                deleteDocFromFirebase("Voucher", inputs.MaGG);
                             }
                             return { recordset: [] };
                         }
@@ -766,6 +798,7 @@ function createMockPool() {
                         };
                         if (!mockStore.DiaChi) mockStore.DiaChi = [];
                         mockStore.DiaChi.push(newDC);
+                        syncDocToFirebase("DiaChi", newDC);
                         return { recordset: [{ MaDC: newDC.MaDC, maDC: newDC.MaDC }] };
                     }
 

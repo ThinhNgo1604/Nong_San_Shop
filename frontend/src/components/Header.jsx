@@ -5,7 +5,20 @@ function Header() {
     const [keyword, setKeyword] = useState("");
     const [user, setUser] = useState(null);
     const [unreadCount, setUnreadCount] = useState(0); 
+    const [cartCount, setCartCount] = useState(0);
     const navigate = useNavigate();
+
+    const calculateCartCount = () => {
+        try {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            if (Array.isArray(cart)) {
+                return cart.reduce((total, item) => total + (Number(item.quantity) || 1), 0);
+            }
+        } catch (e) {
+            return 0;
+        }
+        return 0;
+    };
 
     useEffect(() => {
         const loadUser = () => {
@@ -25,7 +38,12 @@ function Header() {
             }
         };
 
+        const updateCart = () => {
+            setCartCount(calculateCartCount());
+        };
+
         loadUser();
+        updateCart();
 
         const handleNotificationUpdate = (e) => {
             if (e && e.detail && typeof e.detail.unreadCount === 'number') {
@@ -40,11 +58,19 @@ function Header() {
 
         window.addEventListener('updateNotificationCount', handleNotificationUpdate);
         window.addEventListener('userUpdated', loadUser);
-        window.addEventListener('storage', loadUser);
+        window.addEventListener('cartUpdated', updateCart);
+        window.addEventListener('storage', () => {
+            loadUser();
+            updateCart();
+        });
         return () => {
             window.removeEventListener('updateNotificationCount', handleNotificationUpdate);
             window.removeEventListener('userUpdated', loadUser);
-            window.removeEventListener('storage', loadUser);
+            window.removeEventListener('cartUpdated', updateCart);
+            window.removeEventListener('storage', () => {
+                loadUser();
+                updateCart();
+            });
         };
     }, []);
 
@@ -123,16 +149,34 @@ function Header() {
 
                 <Link
                     to="/cart"
-                    className="text-decoration-none fw-medium px-3 py-2"
+                    className="text-decoration-none fw-medium px-3 py-2 position-relative"
                     style={{
                         backgroundColor: "#f57c00",
                         color: "#fff",
                         borderRadius: "20px",
                         fontSize: "14px",
                         boxShadow: "0 2px 6px rgba(245, 124, 0, 0.3)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px"
                     }}
                 >
-                    🛒 Giỏ hàng
+                    <span>🛒 Giỏ hàng</span>
+                    {cartCount > 0 && (
+                        <span
+                            className="badge rounded-pill bg-danger position-absolute"
+                            style={{
+                                top: "-6px",
+                                right: "-6px",
+                                fontSize: "11px",
+                                padding: "4px 7px",
+                                border: "2px solid #fff",
+                                boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                            }}
+                        >
+                            {cartCount > 99 ? "99+" : cartCount}
+                        </span>
+                    )}
                 </Link>
 
                 {user ? (

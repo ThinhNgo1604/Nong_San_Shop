@@ -88,14 +88,37 @@ async function seedCompleteFirebaseData() {
         ],
         DiaChi: [
             { MaDC: 1, MaTK: 2, TenNguoiNhan: "Nguyễn Văn Khách", SoDienThoai: "0987654321", DiaChi: "123 Đường Nguyễn Huệ, Q.1, TP.HCM", MacDinh: true }
+        ],
+        DanhGia: [
+            { MaDG: 1, MaKH: 2, MaSP: 1, SoSao: 5, NoiDung: "Táo rất tươi ngon, giòn ngọt, đóng gói cẩn thận!", NgayDG: new Date(Date.now() - 86400000 * 2).toISOString() },
+            { MaDG: 2, MaKH: 2, MaSP: 3, SoSao: 5, NoiDung: "Dâu tây mọng nước, giao hàng nhanh.", NgayDG: new Date(Date.now() - 86400000).toISOString() }
         ]
     };
+
+    function getDocId(tableName, item) {
+        if (!item) return String(Math.random());
+        if (tableName === 'DanhGia' && item.MaDG) return String(item.MaDG);
+        if (tableName === 'TaiKhoan' && item.MaTK) return String(item.MaTK);
+        if (tableName === 'KhachHang' && item.MaKH) return String(item.MaKH);
+        if (tableName === 'DanhMuc' && item.MaDM) return String(item.MaDM);
+        if (tableName === 'SanPham' && item.MaSP) return String(item.MaSP);
+        if (tableName === 'Voucher' && (item.MaVoucher || item.MaGG)) return String(item.MaVoucher || item.MaGG);
+        if (tableName === 'DonHang' && item.MaDH) return String(item.MaDH);
+        if (tableName === 'ChiTietDonHang' && item.MaDH && item.MaSP) return `${item.MaDH}_${item.MaSP}`;
+        if (tableName === 'ThongBao' && item.MaTB) return String(item.MaTB);
+        if (tableName === 'DiaChi' && item.MaDC) return String(item.MaDC);
+        if (item.MaDG) return String(item.MaDG);
+        if (item.MaDH) return String(item.MaDH);
+        if (item.MaSP) return String(item.MaSP);
+        if (item.MaTK) return String(item.MaTK);
+        if (item.MaKH) return String(item.MaKH);
+        return String(Math.random());
+    }
 
     for (const [tableName, records] of Object.entries(initialData)) {
         console.log(`📡 Đang đẩy bảng [${tableName}] (${records.length} bản ghi)...`);
         for (const item of records) {
-            const idKey = item.MaTK ? 'MaTK' : item.MaSP ? 'MaSP' : item.MaDM ? 'MaDM' : item.MaVoucher ? 'MaVoucher' : item.MaDH ? 'MaDH' : item.MaKH ? 'MaKH' : item.MaTB ? 'MaTB' : item.MaDG ? 'MaDG' : item.MaDC ? 'MaDC' : null;
-            const docId = idKey && item[idKey] ? String(item[idKey]) : String(Math.random());
+            const docId = getDocId(tableName, item);
             await setDoc(doc(db, tableName, docId), item, { merge: true });
         }
     }

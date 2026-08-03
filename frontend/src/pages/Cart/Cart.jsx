@@ -27,20 +27,49 @@ const Cart = () => {
   const storedUser = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
+    let localCart = [];
+    try {
+      localCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    } catch (e) {
+      localCart = [];
+    }
+
     if (storedUser) {
-      fetch(`${API_BASE}/api/cart/${storedUser.maTK}`)
+      fetch(`${API_BASE}/api/cart/${storedUser.maTK || storedUser.MaTK}`)
         .then((res) => res.json())
         .then((data) => {
-          const formattedData = data.map(item => ({
+          let formattedData = Array.isArray(data) ? data.map(item => ({
             ...item,
+            id: Number(item.id || item.maSP),
+            maSP: Number(item.maSP || item.id),
             quantity: Number(item.quantity) || 1
-          }));
-          setCartItems(formattedData);
+          })) : [];
+
+          if (formattedData.length > 0) {
+            setCartItems(formattedData);
+            localStorage.setItem('cart', JSON.stringify(formattedData));
+            window.dispatchEvent(new Event('cartUpdated'));
+          } else if (localCart.length > 0) {
+            setCartItems(localCart);
+            fetch(`${API_BASE}/api/cart/merge`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                maKH: storedUser.maTK || storedUser.MaTK,
+                localCart: localCart
+              })
+            }).catch(err => console.error("Lỗi tự động khôi phục giỏ hàng server:", err));
+          } else {
+            setCartItems([]);
+          }
           setIsLoading(false);
         })
-        .catch((err) => { console.error(err); setIsLoading(false); });
+        .catch((err) => { 
+          console.error("Lỗi lấy giỏ hàng server:", err); 
+          setCartItems(localCart);
+          setIsLoading(false); 
+        });
     } else {
-      const localCart = JSON.parse(localStorage.getItem('cart') || '[]');
       setCartItems(localCart);
       setIsLoading(false);
     }
@@ -87,7 +116,7 @@ const Cart = () => {
     }
   }, [subTotal]);
 
-  // ĐÃ SỬA HÀM NÀY: Gọi API lưu số lượng mới xuống DB
+  // ĐÃ SỬA HÀM NÀY: Gọi API lưu số lượng mới xuống DB và luôn cập nhật localStorage
   const updateQuantity = async (id, delta) => {
     const numericId = Number(id);
     const item = cartItems.find(i => Number(i.id || i.maSP) === numericId);
@@ -96,13 +125,13 @@ const Cart = () => {
     const newQuantity = Math.max(1, Number(item.quantity) + delta);
     if (newQuantity === Number(item.quantity)) return;
 
-    setCartItems(prev => {
-      const updatedCart = prev.map(i => 
-        Number(i.id || i.maSP) === numericId ? { ...i, quantity: newQuantity } : i
-      );
-      if (!storedUser) localStorage.setItem('cart', JSON.stringify(updatedCart));
-      return updatedCart;
-    });
+    const updatedCart = cartItems.map(i => 
+      Number(i.id || i.maSP) === numericId ? { ...i, quantity: newQuantity } : i
+    );
+
+    setCartItems(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    window.dispatchEvent(new Event('cartUpdated'));
 
     if (storedUser) {
       try {
@@ -110,7 +139,7 @@ const Cart = () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            maKH: storedUser.maTK,
+            maKH: storedUser.maTK || storedUser.MaTK,
             maSP: numericId,
             soLuong: delta
           })
@@ -123,18 +152,18 @@ const Cart = () => {
 
   const removeItem = async (id) => {
     const numericId = Number(id);
-    setCartItems(prev => {
-      const updatedCart = prev.filter(item => {
-        const itemMaSP = Number(item.maSP !== undefined ? item.maSP : item.id);
-        return itemMaSP !== numericId;
-      });
-      if (!storedUser) localStorage.setItem('cart', JSON.stringify(updatedCart));
-      return updatedCart;
+    const updatedCart = cartItems.filter(item => {
+      const itemMaSP = Number(item.maSP !== undefined ? item.maSP : item.id);
+      return itemMaSP !== numericId;
     });
+
+    setCartItems(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    window.dispatchEvent(new Event('cartUpdated'));
 
     if (storedUser) {
       try {
-        await fetch(`${API_BASE}/api/cart/remove/${storedUser.maTK}/${numericId}`, {
+        await fetch(`${API_BASE}/api/cart/remove/${storedUser.maTK || storedUser.MaTK}/${numericId}`, {
           method: 'DELETE'
         });
       } catch (error) {
@@ -148,9 +177,11 @@ const Cart = () => {
     setAppliedVoucher(null);
     setDiscount(0);
     localStorage.removeItem('cart');
+    window.dispatchEvent(new Event('cartUpdated'));
+
     if (storedUser) {
       try {
-        await fetch(`${API_BASE}/api/cart/clear/${storedUser.maTK}`, {
+        await fetch(`${API_BASE}/api/cart/clear/${storedUser.maTK || storedUser.MaTK}`, {
           method: 'DELETE'
         });
       } catch (error) {

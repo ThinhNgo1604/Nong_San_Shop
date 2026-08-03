@@ -64,7 +64,8 @@ const ProductDetail = () => {
     .catch(err => { console.error(err); setIsLoading(false); });
 
     if (storedUser) {
-        fetch(`${API_BASE}/api/reviews/check/${storedUser.maTK}/${id}`)
+        const userMaTK = storedUser.maTK || storedUser.MaTK;
+        fetch(`${API_BASE}/api/reviews/check/${userMaTK}/${id}`)
             .then(res => res.json())
             .then(data => setCanReview(data.canReview))
             .catch(err => console.error(err));
@@ -75,46 +76,57 @@ const ProductDetail = () => {
   const decreaseQty = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1));
   
   const handleAddToCart = async () => {
+    if (!product || !product.MaSP) return;
+
+    let localCart = [];
+    try {
+      localCart = JSON.parse(localStorage.getItem('cart') || '[]');
+    } catch (e) {
+      localCart = [];
+    }
+
+    const productId = Number(product.MaSP);
+    const existingIndex = localCart.findIndex(item => Number(item.id || item.maSP) === productId);
+
+    if (existingIndex >= 0) {
+      localCart[existingIndex].quantity = (Number(localCart[existingIndex].quantity) || 0) + quantity;
+      localCart[existingIndex].price = product.DonGia;
+      localCart[existingIndex].DonGia = product.DonGia;
+      localCart[existingIndex].name = product.TenSP;
+      localCart[existingIndex].TenSP = product.TenSP;
+      localCart[existingIndex].HinhAnh = product.HinhAnh || product.image || product.hinh_anh;
+    } else {
+      localCart.push({
+        id: productId,
+        maSP: productId,
+        name: product.TenSP,
+        TenSP: product.TenSP,
+        price: product.DonGia,
+        DonGia: product.DonGia,
+        quantity: quantity,
+        HinhAnh: product.HinhAnh || product.image || product.hinh_anh
+      });
+    }
+
+    localStorage.setItem('cart', JSON.stringify(localCart));
+    window.dispatchEvent(new Event('cartUpdated'));
+
+    showToast(`Đã thêm ${quantity} ${product.TenSP} vào giỏ hàng thành công!`);
+
     if (storedUser) {
       try {
-        const response = await fetch(`${API_BASE}/api/cart/add`, {
+        await fetch(`${API_BASE}/api/cart/add`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            maKH: storedUser.maTK, 
+            maKH: storedUser.maTK || storedUser.MaTK, 
             maSP: product.MaSP,
             soLuong: quantity
           })
         });
-
-        if (response.ok) {
-          showToast(`Đã thêm ${quantity} ${product.TenSP} vào giỏ hàng thành công!`);
-        } else {
-          showToast("Có lỗi xảy ra khi thêm vào giỏ.", "error");
-        }
       } catch (error) {
-        console.error(error);
-        showToast("Lỗi kết nối đến server.", "error");
+        console.error("Lỗi đồng bộ giỏ hàng lên server:", error);
       }
-    } else {
-      let localCart = JSON.parse(localStorage.getItem('cart') || '[]');
-      const existingItemIndex = localCart.findIndex(item => item.id === product.MaSP);
-      
-      if (existingItemIndex >= 0) {
-        localCart[existingItemIndex].quantity += quantity; 
-      } else {
-        localCart.push({
-          id: product.MaSP,
-          maSP: product.MaSP,
-          name: product.TenSP,
-          price: product.DonGia,
-          quantity: quantity,
-          HinhAnh: product.HinhAnh || product.image || product.hinh_anh
-        });
-      }
-      
-      localStorage.setItem('cart', JSON.stringify(localCart));
-      showToast(`Đã thêm ${quantity} ${product.TenSP} vào giỏ hàng thành công!`);
     }
   };
 
@@ -135,12 +147,14 @@ const ProductDetail = () => {
   };
 
   const submitReview = async () => {
+    if (!storedUser) return showToast("Vui lòng đăng nhập để đánh giá!", "error");
     if (!reviewText.trim()) return showToast("Vui lòng nhập nội dung đánh giá!", "error");
     try {
+        const userMaTK = storedUser.maTK || storedUser.MaTK;
         const res = await fetch(`${API_BASE}/api/reviews`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ maTK: storedUser.maTK, maSP: id, soSao: rating, noiDung: reviewText })
+            body: JSON.stringify({ maTK: userMaTK, maSP: id, soSao: rating, noiDung: reviewText })
         });
         if (res.ok) {
             showToast("Cảm ơn bạn đã đánh giá sản phẩm!");

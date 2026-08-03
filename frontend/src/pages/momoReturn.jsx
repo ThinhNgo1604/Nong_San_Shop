@@ -23,6 +23,8 @@ const MomoReturn = () => {
         sessionStorage.removeItem('momoOrder');
         if (data.paid) {
           setStatus('success');
+          localStorage.removeItem('cart');
+          window.dispatchEvent(new Event('cartUpdated'));
           setTimeout(() => navigate('/profile/don-hang'), 1500);
         } else {
           setStatus('fail');

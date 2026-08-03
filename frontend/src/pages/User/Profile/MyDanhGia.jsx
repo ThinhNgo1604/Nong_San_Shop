@@ -8,7 +8,8 @@ function MyDanhGia() {
 
     useEffect(() => {
         if (user) {
-            fetch(`${API_BASE}/api/reviews/user/${user.maTK}`)
+            const userMaTK = user.maTK || user.MaTK;
+            fetch(`${API_BASE}/api/reviews/user/${userMaTK}`)
                 .then(res => res.json())
                 .then(data => setMyReviews(data))
                 .catch(err => console.error(err));

@@ -91,8 +91,9 @@ const Checkout = () => {
                 setSuccessType('payment');
                 setShowSuccess(true);
                 
-                // Nếu là khách, xóa giỏ hàng local
-                if (!currentUser) localStorage.removeItem('cart');
+                // Xóa giỏ hàng local và cập nhật header
+                localStorage.removeItem('cart');
+                window.dispatchEvent(new Event('cartUpdated'));
 
                 // Tự động chuyển trang sau khi hiện thông báo 2.2 giây
                 setTimeout(() => {
@@ -173,7 +174,8 @@ const Checkout = () => {
                     requestId: momoData.requestId
                 }));
                 // (Khách vãng lai thanh toán xong Momo thì redirect cần xử lý ở Backend/Trang Return)
-                if (!storedUser) localStorage.removeItem('cart');
+                localStorage.removeItem('cart');
+                window.dispatchEvent(new Event('cartUpdated'));
                 window.location.href = momoData.payUrl;
             } else {
                 setErrorMessage(momoData.message || "Không khởi tạo được cổng thanh toán MoMo. Vui lòng chọn phương thức VietQR hoặc Tiền mặt.");
@@ -209,7 +211,8 @@ const Checkout = () => {
         setSuccessType('order');
         setShowSuccess(true);
 
-        if (!storedUser) localStorage.removeItem('cart');
+        localStorage.removeItem('cart');
+        window.dispatchEvent(new Event('cartUpdated'));
 
         setTimeout(() => {
             if (!storedUser) navigate('/');

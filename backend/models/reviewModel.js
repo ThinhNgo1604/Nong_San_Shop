@@ -47,12 +47,18 @@ const checkCanReview = async (maTK, maSP) => {
 const createReview = async (maTK, maSP, soSao, noiDung) => {
     const pool = await connectDB();
     
-    // Lấy MaKH từ MaTK
-    const khResult = await pool.request()
-        .input("MaTK", sql.Int, maTK)
-        .query("SELECT MaKH FROM KhachHang WHERE MaTK = @MaTK");
-    if(khResult.recordset.length === 0) throw new Error("Tài khoản không hợp lệ");
-    const maKH = khResult.recordset[0].MaKH;
+    // Lấy MaKH từ MaTK (dùng fallback maTK nếu chưa có bản ghi KhachHang)
+    let maKH = maTK;
+    try {
+        const khResult = await pool.request()
+            .input("MaTK", sql.Int, maTK)
+            .query("SELECT MaKH FROM KhachHang WHERE MaTK = @MaTK");
+        if (khResult.recordset && khResult.recordset.length > 0 && khResult.recordset[0].MaKH) {
+            maKH = khResult.recordset[0].MaKH;
+        }
+    } catch (e) {
+        console.warn("Không tìm thấy MaKH từ MaTK, dùng maTK làm fallback:", e);
+    }
 
     await pool.request()
         .input("MaKH", sql.Int, maKH)

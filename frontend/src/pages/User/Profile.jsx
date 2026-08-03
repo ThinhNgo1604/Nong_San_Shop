@@ -37,8 +37,8 @@ function Profile() {
         const loadUser = () => {
             const storedUser = JSON.parse(localStorage.getItem("user"));
             setUser(storedUser);
-            if (storedUser?.avatarUrl) {
-                setAvatarUrl(storedUser.avatarUrl);
+            if (storedUser?.avatarUrl || storedUser?.HinhAnh) {
+                setAvatarUrl(storedUser.avatarUrl || storedUser.HinhAnh);
             }
         };
 
@@ -56,12 +56,41 @@ function Profile() {
         .reduce((sum, o) => sum + Number(o.TongTien), 0);
 
     const displayName = user ? (user.HoTen || user.email) : "Họ và tên";
-    const avatarLetter = displayName.charAt(0).toUpperCase();
+    const avatarLetter = displayName ? displayName.charAt(0).toUpperCase() : "U";
 
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        setAvatarUrl(URL.createObjectURL(file));
+
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64Data = reader.result;
+            setAvatarUrl(base64Data);
+
+            try {
+                const token = localStorage.getItem("token");
+                await fetch(`${API_BASE}/api/auth/update-profile`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": token ? `Bearer ${token}` : "",
+                    },
+                    body: JSON.stringify({ avatarUrl: base64Data }),
+                });
+
+                const storedUser = JSON.parse(localStorage.getItem("user")) || {};
+                const updatedUser = {
+                    ...storedUser,
+                    avatarUrl: base64Data,
+                    HinhAnh: base64Data,
+                };
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+                window.dispatchEvent(new Event("userUpdated"));
+            } catch (err) {
+                console.error("Lỗi cập nhật ảnh đại diện:", err);
+            }
+        };
+        reader.readAsDataURL(file);
     };
 
     const menuLinkStyle = {

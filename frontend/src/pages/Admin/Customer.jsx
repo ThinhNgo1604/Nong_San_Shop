@@ -34,13 +34,17 @@ function Customer() {
     }
 
     const handleLock = async (customer) => {
+        if (customer.VaiTro === "Admin" || customer.Email === "admin@gmail.com") {
+            alert("Tài khoản Quản trị viên (Admin) luôn luôn mở khóa và không thể bị khóa!");
+            return;
+        }
+
+        const isActive = customer.TrangThai === true || customer.TrangThai === 1 || customer.TrangThai === "1" || customer.TrangThai === "Hoạt động";
 
         const confirmAction = window.confirm(
-
-            customer.TrangThai
-                ? "Bạn có chắc muốn khóa tài khoản này?"
-                : "Bạn có chắc muốn mở khóa tài khoản này?"
-
+            isActive
+                ? `Bạn có chắc muốn KHÓA tài khoản ${customer.HoTen || customer.Email}?`
+                : `Bạn có chắc muốn MỞ KHÓA tài khoản ${customer.HoTen || customer.Email}?`
         );
 
         if (!confirmAction) return;
@@ -52,18 +56,19 @@ function Customer() {
                 customer.MaKH,
 
                 {
-                    TrangThai: !customer.TrangThai
+                    TrangThai: !isActive
                 }
 
             );
 
-            alert("Cập nhật thành công");
+            alert("Cập nhật thành công!");
 
             fetchCustomers();
 
         } catch (error) {
 
             console.log(error);
+            alert(error.response?.data?.message || "Có lỗi xảy ra khi cập nhật trạng thái");
 
         }
 

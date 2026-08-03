@@ -8,12 +8,24 @@ function Header() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            fetchUnreadCount(parsedUser.maTK);
-        }
+        const loadUser = () => {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                try {
+                    const parsedUser = JSON.parse(storedUser);
+                    setUser(parsedUser);
+                    if (parsedUser.maTK || parsedUser.MaTK) {
+                        fetchUnreadCount(parsedUser.maTK || parsedUser.MaTK);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            } else {
+                setUser(null);
+            }
+        };
+
+        loadUser();
 
         const handleNotificationUpdate = (e) => {
             if (e && e.detail && typeof e.detail.unreadCount === 'number') {
@@ -21,13 +33,19 @@ function Header() {
             } else {
                 const currentUser = JSON.parse(localStorage.getItem("user"));
                 if (currentUser) {
-                    fetchUnreadCount(currentUser.maTK);
+                    fetchUnreadCount(currentUser.maTK || currentUser.MaTK);
                 }
             }
         };
 
         window.addEventListener('updateNotificationCount', handleNotificationUpdate);
-        return () => window.removeEventListener('updateNotificationCount', handleNotificationUpdate);
+        window.addEventListener('userUpdated', loadUser);
+        window.addEventListener('storage', loadUser);
+        return () => {
+            window.removeEventListener('updateNotificationCount', handleNotificationUpdate);
+            window.removeEventListener('userUpdated', loadUser);
+            window.removeEventListener('storage', loadUser);
+        };
     }, []);
 
     useEffect(() => {
@@ -165,7 +183,7 @@ function Header() {
                         <Link
                             to="/profile"
                             title="Trang cá nhân"
-                            className="d-flex align-items-center justify-content-center"
+                            className="d-flex align-items-center justify-content-center overflow-hidden"
                             style={{
                                 width: "38px",
                                 height: "38px",
@@ -175,9 +193,18 @@ function Header() {
                                 textDecoration: "none",
                                 fontSize: "18px",
                                 border: "1px solid #c8e6c9",
+                                padding: 0
                             }}
                         >
-                            👤
+                            {(user?.avatarUrl || user?.HinhAnh || user?.Avatar) ? (
+                                <img
+                                    src={user.avatarUrl || user.HinhAnh || user.Avatar}
+                                    alt="Avatar"
+                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                            ) : (
+                                "👤"
+                            )}
                         </Link>
                         
                         <button

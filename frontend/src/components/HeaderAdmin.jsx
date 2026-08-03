@@ -1,18 +1,34 @@
 import { FaUserCircle, FaSignOutAlt, FaHome } from "react-icons/fa";
 import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 function HeaderAdmin() {
     const navigate = useNavigate();
+    const [currentUser, setCurrentUser] = useState(null);
 
-    const userJson = localStorage.getItem("user");
-    let currentUser = null;
-    if (userJson) {
-        try {
-            currentUser = JSON.parse(userJson);
-        } catch (e) {
-            currentUser = null;
-        }
-    }
+    useEffect(() => {
+        const loadUser = () => {
+            const userJson = localStorage.getItem("user");
+            if (userJson) {
+                try {
+                    setCurrentUser(JSON.parse(userJson));
+                } catch (e) {
+                    setCurrentUser(null);
+                }
+            } else {
+                setCurrentUser(null);
+            }
+        };
+
+        loadUser();
+
+        window.addEventListener('userUpdated', loadUser);
+        window.addEventListener('storage', loadUser);
+        return () => {
+            window.removeEventListener('userUpdated', loadUser);
+            window.removeEventListener('storage', loadUser);
+        };
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -52,7 +68,16 @@ function HeaderAdmin() {
                         data-bs-toggle="dropdown"
                         aria-expanded="false"
                     >
-                        <FaUserCircle size={28} className="me-2 text-success" />
+                        {(currentUser?.avatarUrl || currentUser?.HinhAnh || currentUser?.Avatar) ? (
+                            <img
+                                src={currentUser.avatarUrl || currentUser.HinhAnh || currentUser.Avatar}
+                                alt="Avatar"
+                                className="me-2 rounded-circle border"
+                                style={{ width: "32px", height: "32px", objectFit: "cover" }}
+                            />
+                        ) : (
+                            <FaUserCircle size={28} className="me-2 text-success" />
+                        )}
                         <div className="text-start">
                             <div className="fw-semibold">
                                 {currentUser?.hoTen || currentUser?.tenDangNhap || currentUser?.email || "Admin"}

@@ -617,6 +617,83 @@ function createMockPool() {
                         return { recordset: [newKh] };
                     }
 
+                    if (q.includes("UPDATE TAIKHOAN")) {
+                        const maTK = inputs.MaTK;
+                        const maKH = inputs.MaKH;
+                        let targetTk = null;
+                        let targetKh = null;
+
+                        if (maKH) {
+                            targetKh = (mockStore.KhachHang || []).find(k => Number(k.MaKH) === Number(maKH));
+                        }
+                        if (maTK) {
+                            targetTk = (mockStore.TaiKhoan || []).find(u => Number(u.MaTK) === Number(maTK));
+                        }
+                        if (!targetTk && targetKh) {
+                            targetTk = (mockStore.TaiKhoan || []).find(u => Number(u.MaTK) === Number(targetKh.MaTK) || (u.Email && targetKh.Email && u.Email.toLowerCase() === targetKh.Email.toLowerCase()));
+                        }
+
+                        const isBoolStatus = inputs.TrangThai === true || inputs.TrangThai === 1 || inputs.TrangThai === "1" || inputs.TrangThai === "true";
+
+                        if (targetKh) {
+                            if (targetKh.Email === "admin@gmail.com") {
+                                targetKh.TrangThai = true;
+                            } else if (inputs.TrangThai !== undefined) {
+                                targetKh.TrangThai = isBoolStatus;
+                            }
+                            if (inputs.SoDienThoai) targetKh.SoDienThoai = inputs.SoDienThoai;
+                            if (inputs.HinhAnh) targetKh.HinhAnh = inputs.HinhAnh;
+                            syncDocToFirebase("KhachHang", targetKh);
+                        }
+
+                        if (targetTk) {
+                            if (targetTk.VaiTro === "Admin" || targetTk.Email === "admin@gmail.com") {
+                                targetTk.TrangThai = true;
+                            } else if (inputs.TrangThai !== undefined) {
+                                targetTk.TrangThai = isBoolStatus;
+                            }
+                            if (inputs.SoDienThoai) targetTk.SoDienThoai = inputs.SoDienThoai;
+                            if (inputs.HinhAnh) targetTk.HinhAnh = inputs.HinhAnh;
+                            syncDocToFirebase("TaiKhoan", targetTk);
+                        } else if (targetKh) {
+                            const newTk = {
+                                MaTK: targetKh.MaTK || targetKh.MaKH,
+                                TenDangNhap: targetKh.Email || targetKh.HoTen,
+                                Email: targetKh.Email,
+                                SoDienThoai: targetKh.SoDienThoai || "",
+                                HinhAnh: inputs.HinhAnh || targetKh.HinhAnh || "",
+                                VaiTro: "KhachHang",
+                                TrangThai: (targetKh.Email === "admin@gmail.com") ? true : isBoolStatus
+                            };
+                            mockStore.TaiKhoan.push(newTk);
+                            syncDocToFirebase("TaiKhoan", newTk);
+                        }
+
+                        return { recordset: targetTk ? [targetTk] : [] };
+                    }
+
+                    if (q.includes("UPDATE KHACHHANG")) {
+                        const maTK = inputs.MaTK;
+                        const maKH = inputs.MaKH;
+                        let targetKh = null;
+                        if (maTK) {
+                            targetKh = (mockStore.KhachHang || []).find(k => Number(k.MaTK) === Number(maTK) || Number(k.MaKH) === Number(maTK));
+                        }
+                        if (!targetKh && maKH) {
+                            targetKh = (mockStore.KhachHang || []).find(k => Number(k.MaKH) === Number(maKH));
+                        }
+
+                        if (targetKh) {
+                            if (inputs.HoTen !== undefined && inputs.HoTen !== null) targetKh.HoTen = inputs.HoTen;
+                            if (inputs.GioiTinh !== undefined && inputs.GioiTinh !== null) targetKh.GioiTinh = inputs.GioiTinh;
+                            if (inputs.NgaySinh !== undefined && inputs.NgaySinh !== null) targetKh.NgaySinh = inputs.NgaySinh;
+                            if (inputs.HinhAnh !== undefined && inputs.HinhAnh !== null) targetKh.HinhAnh = inputs.HinhAnh;
+                            if (inputs.SoDienThoai !== undefined && inputs.SoDienThoai !== null) targetKh.SoDienThoai = inputs.SoDienThoai;
+                            syncDocToFirebase("KhachHang", targetKh);
+                        }
+                        return { recordset: targetKh ? [targetKh] : [] };
+                    }
+
                     if (q.includes("FROM KHACHHANG")) {
                         let list = [...mockStore.KhachHang];
                         if (inputs.MaTK) {
@@ -625,6 +702,52 @@ function createMockPool() {
                         if (inputs.MaKH) {
                             list = list.filter(k => Number(k.MaKH) === Number(inputs.MaKH));
                         }
+
+                        list = list.map(k => {
+                            const tk = (mockStore.TaiKhoan || []).find(u => Number(u.MaTK) === Number(k.MaTK) || (u.Email && k.Email && u.Email.toLowerCase() === k.Email.toLowerCase()));
+                            
+                            const email = k.Email || (tk ? tk.Email : "");
+                            const sdt = k.SoDienThoai || (tk ? tk.SoDienThoai : "");
+                            const vaiTro = (tk ? tk.VaiTro : null) || (email === "admin@gmail.com" ? "Admin" : "KhachHang");
+                            
+                            let isStatusActive = true;
+                            if (vaiTro === "Admin" || email === "admin@gmail.com") {
+                                isStatusActive = true;
+                            } else if (k.TrangThai !== undefined && k.TrangThai !== null) {
+                                isStatusActive = k.TrangThai === true || k.TrangThai === 1 || k.TrangThai === "1" || k.TrangThai === "true";
+                            } else if (tk) {
+                                isStatusActive = tk.TrangThai !== false && tk.TrangThai !== 0 && tk.TrangThai !== "0" && tk.TrangThai !== "false" && tk.TrangThai !== "Đã khóa";
+                            }
+
+                            // Tính điểm thưởng & điểm xếp hạng
+                            const userLSD = (mockStore.LichSuDiem || []).filter(p => Number(p.MaKH) === Number(k.MaKH) || Number(p.MaTK) === Number(k.MaTK));
+                            const cong = userLSD.filter(p => p.LoaiDiem === "Cộng").reduce((s, p) => s + (Number(p.SoDiem) || 0), 0);
+                            const tru = userLSD.filter(p => p.LoaiDiem === "Trừ").reduce((s, p) => s + (Number(p.SoDiem) || 0), 0);
+                            const diemLichSu = Math.max(0, cong - tru);
+
+                            const totalSpent = (mockStore.DonHang || []).filter(o => Number(o.MaKH) === Number(k.MaKH) || Number(o.MaTK) === Number(k.MaTK)).reduce((s, o) => s + (Number(o.TongTien) || 0), 0);
+                            const diemDonHang = Math.floor(totalSpent / 500);
+
+                            const totalPoints = Math.max(Number(k.DiemThuong) || 0, diemLichSu + diemDonHang);
+
+                            let rank = "Đồng";
+                            if (totalPoints >= 10000) rank = "Kim Cương";
+                            else if (totalPoints >= 5000) rank = "Vàng";
+                            else if (totalPoints >= 1000) rank = "Bạc";
+                            else rank = "Đồng";
+
+                            return {
+                                ...k,
+                                Email: email,
+                                SoDienThoai: sdt,
+                                VaiTro: vaiTro,
+                                TrangThai: isStatusActive,
+                                DiemThuong: totalPoints,
+                                DiemXepHang: totalPoints,
+                                TenHang: k.TenHang || rank
+                            };
+                        });
+
                         return { recordset: list };
                     }
 

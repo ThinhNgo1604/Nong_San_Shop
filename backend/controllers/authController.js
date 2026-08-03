@@ -66,6 +66,10 @@ const login = async (req, res) => {
                 vaiTro: (user.VaiTro || "Khách hàng").toString().trim(),
                 HoTen: user.HoTen || "",
                 SoDienThoai: user.SoDienThoai || "",
+                avatarUrl: user.HinhAnh || user.AvatarKhachHang || "",
+                HinhAnh: user.HinhAnh || user.AvatarKhachHang || "",
+                GioiTinh: user.GioiTinh || "",
+                NgaySinh: user.NgaySinh || "",
             },
         });
     } catch (error) {
@@ -209,19 +213,19 @@ const verifyPassword = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const maTK = req.user.maTK;
-        const { hoTen, soDienThoai, gioiTinh, ngaySinh } = req.body;
+        const { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl } = req.body;
 
-        if (!hoTen || !soDienThoai) {
+        if (!hoTen && !soDienThoai && !avatarUrl) {
             return res.status(400).json({
-                message: "Vui lòng nhập đầy đủ họ tên và số điện thoại"
+                message: "Không có thông tin nào để cập nhật"
             });
         }
 
-        await authModel.updateProfile(maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh });
+        await authModel.updateProfile(maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl });
 
         res.status(200).json({
             message: "Cập nhật hồ sơ thành công",
-            user: { hoTen, soDienThoai, gioiTinh, ngaySinh }
+            user: { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl, HinhAnh: avatarUrl }
         });
 
     } catch (error) {

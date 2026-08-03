@@ -8,7 +8,7 @@ const findByEmail = async (email) => {
         .request()
         .input("Email", sql.VarChar, email)
         .query(`
-            SELECT tk.*, kh.HoTen
+            SELECT tk.*, kh.HoTen, kh.GioiTinh, kh.NgaySinh, kh.HinhAnh AS AvatarKhachHang
             FROM TaiKhoan tk
             LEFT JOIN KhachHang kh ON tk.MaTK = kh.MaTK
             WHERE tk.Email = @Email OR tk.TenDangNhap = @Email
@@ -25,7 +25,7 @@ const findById = async (maTK) => {
         .request()
         .input("MaTK", sql.Int, maTK)
         .query(`
-            SELECT tk.*, kh.HoTen
+            SELECT tk.*, kh.HoTen, kh.GioiTinh, kh.NgaySinh, kh.HinhAnh AS AvatarKhachHang
             FROM TaiKhoan tk
             LEFT JOIN KhachHang kh ON tk.MaTK = kh.MaTK
             WHERE tk.MaTK = @MaTK
@@ -106,17 +106,19 @@ const updatePassword = async (maTK, hashedPassword) => {
 };
 
 // Cập nhật hồ sơ cá nhân
-const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh }) => {
+const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl }) => {
     const pool = await connectDB();
 
-    // Cập nhật số điện thoại ở bảng TaiKhoan
+    // Cập nhật số điện thoại và hình ảnh ở bảng TaiKhoan
     await pool
         .request()
         .input("MaTK", sql.Int, maTK)
-        .input("SoDienThoai", sql.VarChar, soDienThoai)
+        .input("SoDienThoai", sql.VarChar, soDienThoai || null)
+        .input("HinhAnh", sql.NVarChar, avatarUrl || null)
         .query(`
             UPDATE TaiKhoan
-            SET SoDienThoai = @SoDienThoai
+            SET SoDienThoai = ISNULL(@SoDienThoai, SoDienThoai),
+                HinhAnh = ISNULL(@HinhAnh, HinhAnh)
             WHERE MaTK = @MaTK
         `);
 
@@ -124,14 +126,16 @@ const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh }) =
     await pool
         .request()
         .input("MaTK", sql.Int, maTK)
-        .input("HoTen", sql.NVarChar, hoTen)
-        .input("GioiTinh", sql.NVarChar, gioiTinh)
+        .input("HoTen", sql.NVarChar, hoTen || null)
+        .input("GioiTinh", sql.NVarChar, gioiTinh || null)
         .input("NgaySinh", sql.Date, ngaySinh || null)
+        .input("HinhAnh", sql.NVarChar, avatarUrl || null)
         .query(`
             UPDATE KhachHang
-            SET HoTen = @HoTen,
-                GioiTinh = @GioiTinh,
-                NgaySinh = @NgaySinh
+            SET HoTen = ISNULL(@HoTen, HoTen),
+                GioiTinh = ISNULL(@GioiTinh, GioiTinh),
+                NgaySinh = ISNULL(@NgaySinh, NgaySinh),
+                HinhAnh = ISNULL(@HinhAnh, HinhAnh)
             WHERE MaTK = @MaTK
         `);
 };

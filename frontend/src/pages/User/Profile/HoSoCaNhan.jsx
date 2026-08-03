@@ -10,6 +10,7 @@ function HoSoCaNhan() {
         ngaySinh: "",
     });
 
+    const [avatarUrl, setAvatarUrl] = useState("");
     const [originalEmail, setOriginalEmail] = useState("");
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -29,6 +30,9 @@ function HoSoCaNhan() {
                 gioiTinh: storedUser.GioiTinh || "nam",
                 ngaySinh: storedUser.NgaySinh || "",
             }));
+            if (storedUser.avatarUrl || storedUser.HinhAnh) {
+                setAvatarUrl(storedUser.avatarUrl || storedUser.HinhAnh);
+            }
             setOriginalEmail(storedUser.email || "");
         }
     }, []);
@@ -69,6 +73,7 @@ function HoSoCaNhan() {
                     soDienThoai: formData.soDienThoai,
                     gioiTinh: formData.gioiTinh,
                     ngaySinh: formData.ngaySinh,
+                    avatarUrl: avatarUrl || undefined,
                 }),
             });
 
@@ -87,6 +92,8 @@ function HoSoCaNhan() {
                 SoDienThoai: formData.soDienThoai,
                 GioiTinh: formData.gioiTinh,
                 NgaySinh: formData.ngaySinh,
+                avatarUrl: avatarUrl || storedUser.avatarUrl || storedUser.HinhAnh,
+                HinhAnh: avatarUrl || storedUser.HinhAnh || storedUser.avatarUrl,
             };
             localStorage.setItem('user', JSON.stringify(updatedUser));
 
@@ -153,6 +160,40 @@ function HoSoCaNhan() {
             )}
 
             <form onSubmit={handleSubmit}>
+                <div className="mb-4 d-flex align-items-center gap-3">
+                    <div
+                        className="rounded-circle border overflow-hidden d-flex align-items-center justify-content-center bg-light text-success fw-bold flex-shrink-0"
+                        style={{ width: "70px", height: "70px", fontSize: "24px" }}
+                    >
+                        {avatarUrl ? (
+                            <img src={avatarUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                            (formData.hoTen || "U").charAt(0).toUpperCase()
+                        )}
+                    </div>
+                    <div>
+                        <label className="btn btn-outline-success btn-sm mb-1 cursor-pointer" htmlFor="hoso-avatar-input">
+                            📷 Chọn ảnh đại diện
+                        </label>
+                        <input
+                            type="file"
+                            id="hoso-avatar-input"
+                            accept="image/*"
+                            className="d-none"
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    setAvatarUrl(reader.result);
+                                };
+                                reader.readAsDataURL(file);
+                            }}
+                        />
+                        <div className="text-muted small">Dung lượng tối đa 2MB. Định dạng PNG, JPG, JPEG.</div>
+                    </div>
+                </div>
+
                 <div className="mb-3">
                     <label className="form-label">Họ và tên*</label>
                     <input

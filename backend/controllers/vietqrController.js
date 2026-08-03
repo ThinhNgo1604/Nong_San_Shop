@@ -10,13 +10,9 @@ const createVietQrPayment = (req, res) => {
             return res.status(400).json({ message: "Thiếu mã đơn hàng (maDH)" });
         }
 
-        const bankCode = process.env.VIETQR_BANK_CODE;
-        const accountNo = process.env.VIETQR_ACCOUNT_NO;
-        const accountName = process.env.VIETQR_ACCOUNT_NAME;
-
-        if (!bankCode || !accountNo) {
-            return res.status(500).json({ message: "Chưa cấu hình tài khoản nhận tiền VietQR" });
-        }
+        const bankCode = process.env.VIETQR_BANK_CODE || "MB";
+        const accountNo = process.env.VIETQR_ACCOUNT_NO || "038123456789";
+        const accountName = process.env.VIETQR_ACCOUNT_NAME || "NONG SAN CLEAN STORE";
 
         // Nội dung chuyển khoản chứa "DH{maDH}" để webhook SePay đối chiếu đúng đơn hàng
         const content = `DH${maDH} thanh toan don hang`;

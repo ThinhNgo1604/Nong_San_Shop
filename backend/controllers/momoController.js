@@ -1,12 +1,12 @@
 const crypto = require("crypto");
 const orderModel = require("../models/orderModel");
 
-const PARTNER_CODE = process.env.MOMO_PARTNER_CODE;
-const ACCESS_KEY = process.env.MOMO_ACCESS_KEY;
-const SECRET_KEY = process.env.MOMO_SECRET_KEY;
-const ENDPOINT = process.env.MOMO_ENDPOINT;
-const REDIRECT_URL = process.env.MOMO_REDIRECT_URL;
-const IPN_URL = process.env.MOMO_IPN_URL;
+const PARTNER_CODE = process.env.MOMO_PARTNER_CODE || "MOMO";
+const ACCESS_KEY = process.env.MOMO_ACCESS_KEY || "F8B32C281EE15883";
+const SECRET_KEY = process.env.MOMO_SECRET_KEY || "K951B6PE1waDMi640xX08332A9UWE28M";
+const ENDPOINT = process.env.MOMO_ENDPOINT || "https://test-payment.momo.vn/v2/gateway/api/create";
+const REDIRECT_URL = process.env.MOMO_REDIRECT_URL || "http://localhost:3000/momo-return";
+const IPN_URL = process.env.MOMO_IPN_URL || "http://localhost:3000/api/momo/ipn";
 const QUERY_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/query";
 
 // Tạo chữ ký HMAC_SHA256 theo đúng thứ tự MoMo yêu cầu
@@ -71,7 +71,7 @@ const createMomoPayment = async (req, res) => {
 
         if (data.resultCode !== 0) {
             console.error("MoMo tạo giao dịch thất bại:", data);
-            return res.status(400).json({ message: data.message || "Không thể tạo giao dịch MoMo" });
+            return res.status(400).json({ message: data.message || "Cổng thanh toán MoMo phản hồi lỗi. Vui lòng chọn VietQR hoặc Tiền mặt khi giao hàng." });
         }
 
         // Trả về payUrl (link thanh toán web) và orderId (để FE lưu lại, dùng kiểm tra trạng thái sau)
@@ -84,7 +84,7 @@ const createMomoPayment = async (req, res) => {
 
     } catch (error) {
         console.error("Lỗi tạo thanh toán MoMo:", error);
-        res.status(500).json({ message: "Lỗi hệ thống khi tạo thanh toán MoMo" });
+        res.status(500).json({ message: "Cổng thanh toán MoMo hiện chưa thể kết nối. Vui lòng thử lại hoặc chọn phương thức thanh toán VietQR / COD." });
     }
 };
 

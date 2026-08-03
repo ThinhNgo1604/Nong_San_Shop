@@ -43,6 +43,9 @@ const Checkout = () => {
   const [vietQrData, setVietQrData] = useState(null); // { qrUrl, content, maDH }
   const pollingRef = useRef(null);
 
+  // State cho thông báo lỗi thanh toán / địa chỉ
+  const [errorMessage, setErrorMessage] = useState('');
+
   // State cho thông báo "Thành công" theo style riêng của web
   // successType: 'payment' (đã thanh toán qua VietQR) | 'order' (đặt hàng COD/tiền mặt)
   const [showSuccess, setShowSuccess] = useState(false);
@@ -104,16 +107,17 @@ const Checkout = () => {
   };
 
   const handleConfirmClick = async () => {
+    setErrorMessage('');
     const storedUser = JSON.parse(localStorage.getItem('user'));
     
     // Validate cho giao hàng tiêu chuẩn
     if (shippingType === 'standard') {
         if (storedUser && !selectedAddress) {
-            alert("Vui lòng thêm và chọn địa chỉ giao hàng trước khi thanh toán!");
+            setErrorMessage("Vui lòng thêm và chọn địa chỉ giao hàng trước khi thanh toán!");
             return;
         }
         if (!storedUser && (!guestInfo.hoTen || !guestInfo.soDienThoai || !guestInfo.diaChi)) {
-            alert("Vui lòng điền đầy đủ thông tin giao hàng!");
+            setErrorMessage("Vui lòng điền đầy đủ thông tin giao hàng!");
             return;
         }
     }
@@ -145,7 +149,7 @@ const Checkout = () => {
         const orderData = await orderRes.json();
 
         if (!orderRes.ok) {
-            alert(orderData.message || "Có lỗi xảy ra khi tạo đơn hàng!");
+            setErrorMessage(orderData.message || "Có lỗi xảy ra khi tạo đơn hàng!");
             setIsProcessing(false);
             return;
         }
@@ -172,7 +176,7 @@ const Checkout = () => {
                 if (!storedUser) localStorage.removeItem('cart');
                 window.location.href = momoData.payUrl;
             } else {
-                alert(momoData.message || "Không tạo được giao dịch MoMo");
+                setErrorMessage(momoData.message || "Không khởi tạo được cổng thanh toán MoMo. Vui lòng chọn phương thức VietQR hoặc Tiền mặt.");
                 setIsProcessing(false);
             }
             return;
@@ -195,7 +199,7 @@ const Checkout = () => {
                 setShowVietQR(true);
                 startPollingPaymentStatus(orderData.maDH);
             } else {
-                alert(qrData.message || "Không tạo được mã VietQR");
+                setErrorMessage(qrData.message || "Chưa khởi tạo được mã VietQR. Vui lòng kiểm tra lại thông tin nhận tiền.");
             }
             setIsProcessing(false);
             return;
@@ -213,7 +217,7 @@ const Checkout = () => {
         }, 2200);
 
     } catch (error) {
-        alert("Lỗi kết nối Server.");
+        setErrorMessage("Lỗi kết nối Server. Vui lòng thử lại sau giây lát.");
         setIsProcessing(false);
     }
   };
@@ -258,6 +262,16 @@ const Checkout = () => {
     <div className="checkout-wrapper position-relative">
       <div className="checkout-container">
         <h2 className="checkout-title">THANH TOÁN</h2>
+
+        {errorMessage && (
+          <div className="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2 mb-4 shadow-sm rounded-3" role="alert">
+            <span style={{ fontSize: "1.2rem" }}>⚠️</span>
+            <div className="flex-grow-1">
+              <strong>Thông báo thanh toán:</strong> {errorMessage}
+            </div>
+            <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>
+          </div>
+        )}
 
         <SectionBlock title={shippingType === 'store' ? 'ĐỊA CHỈ CỬA HÀNG' : 'ĐỊA CHỈ GIAO HÀNG'}>
           <div className="info-row d-flex justify-content-between align-items-center">

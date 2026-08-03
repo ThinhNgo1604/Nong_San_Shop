@@ -260,26 +260,30 @@ function createMockPool() {
     };
 }
 
-let syncInitiated = false;
+let syncPromise = null;
 
-function connectDB() {
-    if (!syncInitiated) {
-        syncInitiated = true;
-        syncFirebaseWithStore();
+async function connectDB() {
+    if (!syncPromise) {
+        syncPromise = syncFirebaseWithStore();
+    }
+    await syncPromise;
+
+    if (process.env.ENABLE_MSSQL_CONNECT) {
+        if (!poolPromise) {
+            poolPromise = sql.connect(config)
+                .then((pool) => {
+                    console.log("✅ Connected to SQL Server");
+                    return pool;
+                })
+                .catch((err) => {
+                    console.warn("⚠️ Dùng Firebase Firestore + Mock Engine cho Web Application!");
+                    return createMockPool();
+                });
+        }
+        return poolPromise;
     }
 
-    if (!poolPromise) {
-        poolPromise = sql.connect(config)
-            .then((pool) => {
-                console.log("✅ Connected to SQL Server");
-                return pool;
-            })
-            .catch((err) => {
-                console.warn("⚠️ Dùng Firebase Firestore + Mock Engine cho Web Application!");
-                return createMockPool();
-            });
-    }
-    return poolPromise;
+    return createMockPool();
 }
 
 module.exports = {

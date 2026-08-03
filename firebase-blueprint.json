@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "TaiKhoan": {
+      "title": "Tài Khoản",
+      "description": "Thông tin tài khoản người dùng và admin",
+      "type": "object",
+      "properties": {
+        "MaTK": { "type": "number" },
+        "TenDangNhap": { "type": "string" },
+        "Email": { "type": "string" },
+        "SoDienThoai": { "type": "string" },
+        "VaiTro": { "type": "string" },
+        "TrangThai": { "type": "boolean" }
+      },
+      "required": ["TenDangNhap", "Email"]
+    },
+    "DanhMuc": {
+      "title": "Danh Mục",
+      "description": "Danh mục sản phẩm nông sản",
+      "type": "object",
+      "properties": {
+        "MaDM": { "type": "number" },
+        "TenDM": { "type": "string" },
+        "MoTa": { "type": "string" },
+        "TrangThai": { "type": "boolean" }
+      },
+      "required": ["TenDM"]
+    },
+    "SanPham": {
+      "title": "Sản Phẩm",
+      "description": "Sản phẩm nông sản sạch",
+      "type": "object",
+      "properties": {
+        "MaSP": { "type": "number" },
+        "TenSP": { "type": "string" },
+        "MaDM": { "type": "number" },
+        "DonGia": { "type": "number" },
+        "GiaGoc": { "type": "number" },
+        "GiamToiDa": { "type": "number" },
+        "TuDongGiamGia": { "type": "number" },
+        "MoTa": { "type": "string" },
+        "HinhAnh": { "type": "string" },
+        "SoLuongTon": { "type": "number" },
+        "DonViTinh": { "type": "string" },
+        "TrangThai": { "type": "boolean" },
+        "TenDM": { "type": "string" }
+      },
+      "required": ["TenSP", "DonGia"]
+    },
+    "Voucher": {
+      "title": "Mã Giảm Giá",
+      "description": "Voucher và khuyến mãi",
+      "type": "object",
+      "properties": {
+        "MaVoucher": { "type": "number" },
+        "MaCode": { "type": "string" },
+        "TenVoucher": { "type": "string" },
+        "PhanTramGiam": { "type": "number" },
+        "GiamToiDa": { "type": "number" },
+        "GiaTriToiThieu": { "type": "number" },
+        "SoLuong": { "type": "number" },
+        "TrangThai": { "type": "boolean" }
+      },
+      "required": ["MaCode", "PhanTramGiam"]
+    },
+    "DonHang": {
+      "title": "Đơn Hàng",
+      "description": "Đơn hàng của khách hàng",
+      "type": "object",
+      "properties": {
+        "MaDH": { "type": "number" },
+        "MaKH": { "type": "number" },
+        "TenNguoiNhan": { "type": "string" },
+        "SoDienThoai": { "type": "string" },
+        "DiaChi": { "type": "string" },
+        "TongTien": { "type": "number" },
+        "TrangThai": { "type": "string" },
+        "TrangThaiThanhToan": { "type": "string" },
+        "NgayTao": { "type": "string" }
+      },
+      "required": ["MaKH", "TongTien"]
+    },
+    "ThongBao": {
+      "title": "Thông Báo",
+      "description": "Thông báo người dùng",
+      "type": "object",
+      "properties": {
+        "MaTB": { "type": "number" },
+        "MaKH": { "type": "number" },
+        "TieuDe": { "type": "string" },
+        "NoiDung": { "type": "string" },
+        "DaDoc": { "type": "boolean" },
+        "NgayTao": { "type": "string" }
+      },
+      "required": ["MaKH", "TieuDe"]
+    }
+  }
+}

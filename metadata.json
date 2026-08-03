@@ -1,0 +1,6 @@
+{
+  "name": "Nông Sản Shop",
+  "description": "Website bán hàng nông sản sạch, tươi ngon với đầy đủ trang người dùng và trang quản trị admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

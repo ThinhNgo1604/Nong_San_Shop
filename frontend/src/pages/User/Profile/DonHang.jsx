@@ -12,15 +12,18 @@ function DonHang() {
 
     const ordersPerPage = 5;
 
-    const handleCancelOrder = async (maDH) => {
+    const handleCancelOrder = async (targetId) => {
+        if (!targetId) {
+            alert("Không tìm thấy mã đơn hàng!");
+            return;
+        }
 
         if (!window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không?"))
             return;
 
         try {
-
             const response = await fetch(
-                `${API_BASE}/api/orders/${maDH}/status`,
+                `${API_BASE}/api/orders/${targetId}/status`,
                 {
                     method: "PUT",
                     headers: {
@@ -32,16 +35,15 @@ function DonHang() {
                 }
             );
 
+            const data = await response.json();
+
             if (response.ok) {
-
                 alert("Hủy đơn hàng thành công!");
-
-                fetchOrders();
-
+                if (typeof fetchOrders === "function") {
+                    fetchOrders();
+                }
             } else {
-
-                alert("Có lỗi xảy ra khi hủy đơn.");
-
+                alert(data.message || "Có lỗi xảy ra khi hủy đơn.");
             }
 
         } catch (error) {
@@ -176,16 +178,16 @@ function DonHang() {
                             <tbody>
 
                                 {currentOrders.map((o) => {
-
+                                    const orderStatus = o.TrangThaiDonHang || o.TrangThai || "Chờ xác nhận";
                                     const canCancel =
-                                        o.TrangThaiThanhToan !== "Đã thanh toán" &&
-                                        o.TrangThaiDonHang !== "Đang giao" &&
-                                        o.TrangThaiDonHang !== "Đã giao" &&
-                                        o.TrangThaiDonHang !== "Đã hủy";
+                                        orderStatus !== "Đang giao" &&
+                                        orderStatus !== "Đã giao" &&
+                                        orderStatus !== "Đã hủy";
+                                    const orderId = o.MaDH || o.maDH || o.id;
 
                                     return (
 
-                                        <tr key={o.MaDH}>
+                                        <tr key={orderId}>
 
                                             <td>
                                                 {new Date(
@@ -244,7 +246,7 @@ function DonHang() {
                                                         className="btn btn-outline-danger btn-sm"
                                                         onClick={() =>
                                                             handleCancelOrder(
-                                                                o.MaDH
+                                                                orderId
                                                             )
                                                         }
                                                     >

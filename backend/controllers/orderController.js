@@ -32,8 +32,7 @@ const updateStatus = async (req, res) => {
     try {
         const orderId = req.params.id;
         const newStatus = req.body.TrangThaiDonHang;
-        const newPaymentStatus = req.body.TrangThaiThanhToan; // Lấy thêm trạng thái thanh toán
-
+        
         // 1. Lấy trạng thái hiện tại của đơn hàng từ Database
         const currentOrder = await orderModel.getOrderStatusById(orderId);
         
@@ -41,15 +40,9 @@ const updateStatus = async (req, res) => {
             return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
         }
 
-        // Cập nhật điều kiện: Không cho hủy nếu TRẠNG THÁI HIỆN TẠI ĐÃ LÀ THANH TOÁN
-        if (
-            newStatus === "Đã hủy" &&
-            currentOrder.TrangThaiThanhToan === "Đã thanh toán"
-        ) {
-            return res.status(400).json({
-                message: "Đơn hàng đã thanh toán không thể hủy."
-            });
-        }
+        const finalPaymentStatus = (req.body.TrangThaiThanhToan !== undefined && req.body.TrangThaiThanhToan !== null)
+            ? req.body.TrangThaiThanhToan 
+            : (currentOrder.TrangThaiThanhToan || "Chưa thanh toán");
 
         const currentStatus = currentOrder.TrangThaiDonHang;
 
@@ -65,14 +58,16 @@ const updateStatus = async (req, res) => {
         // 3. Kiểm tra tính hợp lệ của thao tác chuyển đổi
         const validOptions = allowedTransitions[currentStatus] || ["Chờ xác nhận", "Đã xác nhận", "Đang giao", "Đã giao", "Đã hủy"];
         
-        if (!validOptions.includes(newStatus)) {
+        if (newStatus && !validOptions.includes(newStatus)) {
             return res.status(400).json({ 
                 message: `Lỗi thao tác: Không thể chuyển trạng thái đơn hàng từ '${currentStatus}' sang '${newStatus}'` 
             });
         }
 
+        const finalStatus = newStatus || currentStatus;
+
         // 4. Cập nhật trạng thái (Bao gồm cả trạng thái giao hàng & thanh toán)
-        await orderModel.updateStatus(orderId, newStatus, newPaymentStatus);
+        await orderModel.updateStatus(orderId, finalStatus, finalPaymentStatus);
         
         // --- 5. TẠO THÔNG BÁO TỰ ĐỘNG ---
         try {

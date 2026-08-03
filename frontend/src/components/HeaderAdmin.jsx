@@ -1,13 +1,23 @@
-import { FaBell, FaUserCircle, FaSignOutAlt } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { FaUserCircle, FaSignOutAlt, FaHome } from "react-icons/fa";
+import { useNavigate, Link } from "react-router-dom";
 
 function HeaderAdmin() {
     const navigate = useNavigate();
 
+    const userJson = localStorage.getItem("user");
+    let currentUser = null;
+    if (userJson) {
+        try {
+            currentUser = JSON.parse(userJson);
+        } catch (e) {
+            currentUser = null;
+        }
+    }
+
     const handleLogout = () => {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        navigate("/"); 
+        navigate("/login"); 
     };
 
     return (
@@ -30,7 +40,10 @@ function HeaderAdmin() {
                 </small>
             </div>
 
-            <div className="d-flex align-items-center">
+            <div className="d-flex align-items-center gap-3">
+                <Link to="/" className="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                    <FaHome /> Về trang bán hàng
+                </Link>
 
                 <div className="dropdown">
                     <button
@@ -41,8 +54,12 @@ function HeaderAdmin() {
                     >
                         <FaUserCircle size={28} className="me-2 text-success" />
                         <div className="text-start">
-                            <div className="fw-semibold">Admin</div>
-                            <small className="text-muted">Quản trị viên</small>
+                            <div className="fw-semibold">
+                                {currentUser?.hoTen || currentUser?.tenDangNhap || currentUser?.email || "Admin"}
+                            </div>
+                            <small className="text-muted">
+                                {currentUser?.vaiTro || "Quản trị viên"}
+                            </small>
                         </div>
                     </button>
 

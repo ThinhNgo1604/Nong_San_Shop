@@ -23,7 +23,9 @@ const Checkout = () => {
 
   const [cartItems, setCartItems] = useState(location.state?.cartItems || []);
   const initialShippingType = location.state?.shippingType || 'standard';
-  const discount = location.state?.discount || 0; 
+  const [discount, setDiscount] = useState(location.state?.discount || 0); 
+  const [appliedVoucher, setAppliedVoucher] = useState(location.state?.appliedVoucher || null);
+  const [promoCode, setPromoCode] = useState(location.state?.promoCode || '');
   
   const [shippingType, setShippingType] = useState(initialShippingType);
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -67,7 +69,8 @@ const Checkout = () => {
     };
   }, []);
 
-  const subTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+  const getItemPrice = (item) => Number(item.price ?? item.DonGia ?? item.donGia ?? 0);
+  const subTotal = cartItems.reduce((total, item) => total + (getItemPrice(item) * (Number(item.quantity) || 1)), 0);
   const shippingFee = shippingType === 'standard' ? 22000 : 0;
   const totalAmount = Math.max(0, subTotal + shippingFee - discount);
 
@@ -336,14 +339,18 @@ const Checkout = () => {
         <SectionBlock title="KIỂM TRA LẠI ĐƠN HÀNG">
           <table className="order-table">
             <tbody>
-              {cartItems.map((item, index) => (
-                <tr key={index}>
-                  <td style={{ color: '#333' }}>{item.name}</td>
-                  <td className="td-center">{item.price.toLocaleString()} đ</td>
-                  <td className="td-center">{item.quantity}</td>
-                  <td className="td-right">{(item.price * item.quantity).toLocaleString()} đ</td>
-                </tr>
-              ))}
+              {cartItems.map((item, index) => {
+                const itemPrice = getItemPrice(item);
+                const itemQty = Number(item.quantity) || 1;
+                return (
+                  <tr key={index}>
+                    <td style={{ color: '#333' }}>{item.name || item.TenSP}</td>
+                    <td className="td-center">{itemPrice.toLocaleString()} đ</td>
+                    <td className="td-center">{itemQty}</td>
+                    <td className="td-right">{(itemPrice * itemQty).toLocaleString()} đ</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </SectionBlock>
@@ -356,7 +363,7 @@ const Checkout = () => {
             
             {discount > 0 && (
                 <div className="summary-row" style={{ color: '#d32f2f' }}>
-                    <span>Giảm giá Voucher</span>
+                    <span>Giảm giá Voucher {(appliedVoucher?.Code || promoCode) ? `(${appliedVoucher?.Code || promoCode})` : ''}</span>
                     <span>- {discount.toLocaleString()} đ</span>
                 </div>
             )}

@@ -77,6 +77,19 @@ const updateCategory = async (id, category) => {
         `);
 
 };
+// Đếm sản phẩm thuộc danh mục
+const countProductsByCategoryId = async (id) => {
+    const pool = await connectDB();
+    const result = await pool.request()
+        .input("MaDM", sql.Int, id)
+        .query(`
+            SELECT COUNT(*) AS count
+            FROM SanPham
+            WHERE MaDM = @MaDM
+        `);
+    return result.recordset[0]?.count || 0;
+};
+
 // Xóa danh mục
 const deleteCategory = async (id) => {
 
@@ -97,5 +110,6 @@ module.exports = {
     updateCategory,
     deleteCategory,
     checkCategoryName,
-    checkCategoryNameUpdate
+    checkCategoryNameUpdate,
+    countProductsByCategoryId
 };

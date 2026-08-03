@@ -15,10 +15,14 @@ function Header() {
             fetchUnreadCount(parsedUser.maTK);
         }
 
-        const handleNotificationUpdate = () => {
-            const currentUser = JSON.parse(localStorage.getItem("user"));
-            if (currentUser) {
-                fetchUnreadCount(currentUser.maTK);
+        const handleNotificationUpdate = (e) => {
+            if (e && e.detail && typeof e.detail.unreadCount === 'number') {
+                setUnreadCount(e.detail.unreadCount);
+            } else {
+                const currentUser = JSON.parse(localStorage.getItem("user"));
+                if (currentUser) {
+                    fetchUnreadCount(currentUser.maTK);
+                }
             }
         };
 
@@ -40,7 +44,7 @@ function Header() {
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) {
-                    const count = data.filter(notif => !notif.DaDoc).length;
+                    const count = data.filter(notif => !notif.DaDoc && notif.DaDoc !== 1 && notif.DaDoc !== true && notif.DaDoc !== "1" && notif.DaDoc !== "true").length;
                     setUnreadCount(count);
                 }
             })

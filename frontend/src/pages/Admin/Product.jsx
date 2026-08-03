@@ -69,16 +69,17 @@ const handleSave = async (data) => {
             await updateProduct(editingProduct.MaSP, data);
 
             alert("Cập nhật thành công");
+            await fetchProducts(page);
 
         } else {
 
             await createProduct(data);
 
-            alert("Thêm thành công");
+            alert("Thêm sản phẩm thành công");
+            setPage(1);
+            await fetchProducts(1);
 
         }
-
-        await fetchProducts(page);
 
         setEditingProduct(null);
 
@@ -90,6 +91,7 @@ const handleSave = async (data) => {
         );
 
         console.log(error);
+        throw error;
 
     }
 
@@ -138,6 +140,7 @@ const handleSave = async (data) => {
                 onAdd={handleSave}
                 categories={categories}
                 editingProduct={editingProduct}
+                onCancel={() => setEditingProduct(null)}
             />
 
             <table className="table table-bordered table-hover">

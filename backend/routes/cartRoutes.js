@@ -9,6 +9,8 @@ router.get('/:maKH', cartController.getCartByCustomerId);
 
 router.post('/checkout', cartController.checkoutCart);
 
+router.delete('/clear/:maKH', cartController.clearCart);
+
 router.delete('/remove/:maKH/:maSP', cartController.removeFromCart);
 
 router.post('/add', cartController.addToCart);

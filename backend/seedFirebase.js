@@ -4,7 +4,7 @@ const { db, collection, doc, setDoc, getDocs } = require("./firebase");
 async function seedCompleteFirebaseData() {
     console.log("🔥 Đang kiểm tra và đẩy toàn bộ dữ liệu mẫu lên Firebase Firestore...");
 
-    const hashedPasswordAdmin = bcrypt.hashSync("password123", 10);
+    const hashedPasswordAdmin = bcrypt.hashSync("123456", 10);
     const hashedPasswordUser = bcrypt.hashSync("123456", 10);
 
     const initialData = {

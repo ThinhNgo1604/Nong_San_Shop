@@ -120,8 +120,9 @@ const Checkout = () => {
         // Tạo payload linh hoạt dựa trên user hoặc guest
         const payload = storedUser ? {
             isGuest: false,
-            maKH: storedUser.maTK,
+            maKH: storedUser.maTK || storedUser.MaTK,
             maDC: shippingType === 'store' ? null : selectedAddress?.MaDC,
+            cartItems: cartItems,
             tongTien: totalAmount,
             trangThaiThanhToan: 'Chưa thanh toán'
         } : {

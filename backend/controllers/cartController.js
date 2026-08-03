@@ -41,19 +41,23 @@ const getCartByCustomerId = async (req, res) => {
     `);
 
     // 3. Map số lượng từ Redis sang kết quả SQL và tính lại giá
-    const cartItems = result.recordset.map(product => {
-        // Tìm số lượng tương ứng trong mảng Redis
-        const redisItem = cart.find(item => item.maSP === product.id);
+    const cartItems = cart.map(item => {
+        const pId = Number(item.maSP);
+        const product = result.recordset.find(p => Number(p.id || p.MaSP) === pId);
+        if (!product) return null;
+        const pName = product.name || product.TenSP;
         const finalPrice = calculatePrice(product);
 
         return {
-            id: product.id,
-            name: product.name,
+            id: pId,
+            maSP: pId,
+            name: pName,
+            TenSP: pName,
             price: finalPrice,
-            quantity: redisItem ? redisItem.soLuong : 1,
+            quantity: Number(item.soLuong) || 1,
             HinhAnh: product.HinhAnh
         };
-    });
+    }).filter(Boolean);
 
     res.json(cartItems);
   } catch (error) {
@@ -160,19 +164,25 @@ const checkoutCart = async (req, res) => {
         finalMaDC = maDC;
     }
 
-    // 1. TỰ ĐỘNG LẤY GIỎ HÀNG TỪ REDIS VÀ TÍNH TOÁN LẠI GIÁ
+    // 1. TỰ ĐỘNG LẤY GIỎ HÀNG TỪ REDIS VÀ TÍNH TOÁN LẠI GIÁ (Fallback sang cartItems nếu Redis trống)
     const redisKey = `cart:${realMaKH}`;
     const cartData = await redisClient.get(redisKey);
-    if (!cartData) return res.status(400).json({ message: "Giỏ hàng đang trống" });
-    
-    const cart = JSON.parse(cartData);
+    let cart = cartData ? JSON.parse(cartData) : [];
+
+    if (cart.length === 0 && Array.isArray(cartItems) && cartItems.length > 0) {
+        cart = cartItems.map(item => ({
+            maSP: Number(item.id || item.maSP),
+            soLuong: Number(item.quantity) || 1
+        }));
+    }
+
     if (cart.length === 0) return res.status(400).json({ message: "Giỏ hàng đang trống" });
 
     // Lấy chi tiết thông tin SP từ Database để đảm bảo an toàn
-    const productIds = cart.map(item => item.maSP).join(',');
+    const productIds = cart.map(item => Number(item.maSP)).filter(Boolean).join(',');
     const productsQuery = await pool.request().query(`
         SELECT MaSP, TenSP, DonGia, GiaGoc, GiamToiDa, TuDongGiamGia, SoLuongTon
-        FROM SanPham WHERE MaSP IN (${productIds})
+        FROM SanPham WHERE MaSP IN (${productIds || 0})
     `);
 
     let calculatedSubTotal = 0; 
@@ -180,7 +190,7 @@ const checkoutCart = async (req, res) => {
     
     for (const item of cart) {
         // Tìm thông tin SP tương ứng
-        const dbProduct = productsQuery.recordset.find(p => p.MaSP === item.maSP);
+        const dbProduct = productsQuery.recordset.find(p => Number(p.MaSP) === Number(item.maSP));
         if (!dbProduct) return res.status(400).json({ message: "Có sản phẩm không tồn tại trong hệ thống" });
 
         if (item.soLuong > dbProduct.SoLuongTon) {
@@ -346,8 +356,8 @@ const removeFromCart = async (req, res) => {
     
     if (cartData) {
         let cart = JSON.parse(cartData);
-        // Lọc bỏ sản phẩm cần xóa
-        cart = cart.filter(item => item.maSP !== Number(maSP));
+        // Lọc bỏ sản phẩm cần xóa (so sánh bằng Number để tránh khác kiểu dữ liệu string/number)
+        cart = cart.filter(item => Number(item.maSP) !== Number(maSP));
         
         if (cart.length > 0) {
             // Nếu giỏ hàng còn đồ, cập nhật lại Redis (set lại TTL 3 ngày)
@@ -365,10 +375,34 @@ const removeFromCart = async (req, res) => {
   }
 };
 
+// 6. HÀM XÓA SẠCH GIỎ HÀNG
+const clearCart = async (req, res) => {
+  try {
+    const maTK = req.params.maKH;
+    const pool = await connectDB();
+
+    const khResult = await pool.request()
+      .input('MaTK', sql.Int, maTK)
+      .query('SELECT MaKH FROM KhachHang WHERE MaTK = @MaTK');
+
+    if (khResult.recordset.length > 0) {
+      const realMaKH = khResult.recordset[0].MaKH;
+      const redisKey = `cart:${realMaKH}`;
+      await redisClient.del(redisKey);
+    }
+
+    res.status(200).json({ message: "Đã xóa sạch giỏ hàng" });
+  } catch (error) {
+    console.error("Lỗi khi xóa sạch giỏ hàng:", error);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
 module.exports = {
   getCartByCustomerId,
   checkoutCart,
   addToCart,
   mergeCart,
-  removeFromCart
+  removeFromCart,
+  clearCart
 };

@@ -50,8 +50,8 @@ function Notification() {
                 const updated = notifications.map(notif => ({ ...notif, DaDoc: true }));
                 setNotifications(updated);
 
-                // PHÁT TÍN HIỆU TOÀN CỤC
-                window.dispatchEvent(new Event('updateNotificationCount'));
+                // PHÁT TÍN HIỆU TOÀN CỤC CHO HEADER XÓA CHẤM ĐỎ NGAY LẬP TỨC
+                window.dispatchEvent(new CustomEvent('updateNotificationCount', { detail: { unreadCount: 0 } }));
             }
         } catch (error) {
             console.error("Lỗi khi cập nhật thông báo:", error);
@@ -107,6 +107,10 @@ function Notification() {
         }
     };
 
+    const isNotifRead = (notif) => {
+        return notif.DaDoc === true || notif.DaDoc === 1 || notif.DaDoc === "1" || notif.DaDoc === "true";
+    };
+
     // --- LOGIC XỬ LÝ DỮ LIỆU PHÂN TRANG ---
     const indexOfLastNotification = currentPage * notificationsPerPage;
     const indexOfFirstNotification = indexOfLastNotification - notificationsPerPage;
@@ -126,7 +130,7 @@ function Notification() {
                     onClick={handleMarkAllAsRead} 
                     className="btn btn-sm btn-outline-success"
                     style={{ borderRadius: '20px' }}
-                    disabled={notifications.length === 0 || notifications.every(n => n.DaDoc)}
+                    disabled={notifications.length === 0 || notifications.every(n => isNotifRead(n))}
                 >
                     ✓ Đánh dấu đã đọc tất cả
                 </button>
@@ -142,12 +146,13 @@ function Notification() {
                     <div className="list-group list-group-flush mb-4">
                         {currentNotifications.map((notif) => {
                             const { icon, color, bg } = getIconAndColor(notif.Loai);
+                            const isRead = isNotifRead(notif);
                             return (
                                 <div 
                                     key={notif.MaTB} 
-                                    className={`list-group-item d-flex align-items-start py-3 px-3 mb-2 rounded-3 border ${notif.DaDoc ? 'bg-white' : ''}`}
+                                    className={`list-group-item d-flex align-items-start py-3 px-3 mb-2 rounded-3 border ${isRead ? 'bg-white' : ''}`}
                                     style={{ 
-                                        backgroundColor: notif.DaDoc ? '#fff' : '#f4fbf5',
+                                        backgroundColor: isRead ? '#fff' : '#f4fbf5',
                                         transition: 'background-color 0.3s'
                                     }}
                                 >
@@ -160,7 +165,7 @@ function Notification() {
                                     
                                     <div className="ms-3 flex-grow-1">
                                         <div className="d-flex justify-content-between align-items-center mb-1">
-                                            <h6 className={`mb-0 ${notif.DaDoc ? 'text-dark' : 'fw-bold text-success'}`}>
+                                            <h6 className={`mb-0 ${isRead ? 'text-dark' : 'fw-bold text-success'}`}>
                                                 {notif.TieuDe}
                                             </h6>
                                             <small className="text-muted" style={{ fontSize: '12px' }}>
@@ -172,7 +177,7 @@ function Notification() {
                                         </p>
                                     </div>
 
-                                    {!notif.DaDoc && (
+                                    {!isRead && (
                                         <div 
                                             className="rounded-circle bg-danger ms-2 mt-2" 
                                             style={{ width: '8px', height: '8px' }}

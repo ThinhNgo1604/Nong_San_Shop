@@ -39,20 +39,21 @@ const Cart = () => {
 
   // ĐÃ SỬA HÀM NÀY: Gọi API lưu số lượng mới xuống DB
   const updateQuantity = async (id, delta) => {
+    const numericId = Number(id);
     // 1. Tìm sản phẩm hiện tại để kiểm tra
-    const item = cartItems.find(i => i.id === id);
+    const item = cartItems.find(i => Number(i.id || i.maSP) === numericId);
     if (!item) return;
 
     // 2. Tính số lượng mới (không cho phép giảm xuống dưới 1)
     const newQuantity = Math.max(1, Number(item.quantity) + delta);
     
-    // Nếu đang là 1 mà bấm dấu trừ thì bỏ qua không làm gì cả
-    if (newQuantity === item.quantity) return;
+    // Nếu đang bằng số lượng cũ thì bỏ qua
+    if (newQuantity === Number(item.quantity)) return;
 
     // 3. Cập nhật UI ngay lập tức cho mượt
     setCartItems(prev => {
       const updatedCart = prev.map(i => 
-        i.id === id ? { ...i, quantity: newQuantity } : i
+        Number(i.id || i.maSP) === numericId ? { ...i, quantity: newQuantity } : i
       );
       if (!storedUser) localStorage.setItem('cart', JSON.stringify(updatedCart));
       return updatedCart;
@@ -66,7 +67,7 @@ const Cart = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             maKH: storedUser.maTK,
-            maSP: id,
+            maSP: numericId,
             soLuong: delta // Truyền thẳng +1 hoặc -1 để DB tự động cộng/trừ tương ứng
           })
         });
@@ -77,21 +78,37 @@ const Cart = () => {
   };
 
   const removeItem = async (id) => {
-    if(window.confirm("Bạn có chắc muốn bỏ sản phẩm này?")) {
-      setCartItems(prev => {
-        const updatedCart = prev.filter(item => item.id !== id);
-        if (!storedUser) localStorage.setItem('cart', JSON.stringify(updatedCart));
-        return updatedCart;
+    const numericId = Number(id);
+    setCartItems(prev => {
+      const updatedCart = prev.filter(item => {
+        const itemMaSP = Number(item.maSP !== undefined ? item.maSP : item.id);
+        return itemMaSP !== numericId;
       });
+      if (!storedUser) localStorage.setItem('cart', JSON.stringify(updatedCart));
+      return updatedCart;
+    });
 
-      if (storedUser) {
-        try {
-          await fetch(`${API_BASE}/api/cart/remove/${storedUser.maTK}/${id}`, {
-            method: 'DELETE'
-          });
-        } catch (error) {
-          console.error("Lỗi xóa sản phẩm trên server:", error);
-        }
+    if (storedUser) {
+      try {
+        await fetch(`${API_BASE}/api/cart/remove/${storedUser.maTK}/${numericId}`, {
+          method: 'DELETE'
+        });
+      } catch (error) {
+        console.error("Lỗi xóa sản phẩm trên server:", error);
+      }
+    }
+  };
+
+  const clearAllItems = async () => {
+    setCartItems([]);
+    localStorage.removeItem('cart');
+    if (storedUser) {
+      try {
+        await fetch(`${API_BASE}/api/cart/clear/${storedUser.maTK}`, {
+          method: 'DELETE'
+        });
+      } catch (error) {
+        console.error("Lỗi xóa toàn bộ sản phẩm trên server:", error);
       }
     }
   };
@@ -153,7 +170,17 @@ const Cart = () => {
 
   return (
     <div className="cart-page">
-      <h2 className="cart-header">Giỏ hàng của bạn 🌱</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px dashed #a5d6a7', paddingBottom: '15px' }}>
+        <h2 className="cart-header" style={{ margin: 0, borderBottom: 'none', paddingBottom: 0 }}>Giỏ hàng của bạn 🌱</h2>
+        {cartItems.length > 0 && (
+          <button 
+            onClick={clearAllItems}
+            style={{ backgroundColor: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '14px' }}
+          >
+            🗑️ Xóa tất cả
+          </button>
+        )}
+      </div>
       
       {cartItems.length === 0 ? (
         <div className="empty-cart-container">
@@ -178,35 +205,38 @@ const Cart = () => {
                 </tr>
               </thead>
               <tbody>
-                {cartItems.map((item) => (
-                  <tr key={item.id} className="cart-row">
-                    <td className="cart-col-action">
-                      <button onClick={() => removeItem(item.id)} className="btn-remove">🗑️</button>
-                    </td>
-                    <td className="cart-col-product">
-                      <div className="product-icon" style={{ padding: 0, width: '60px', height: '60px', flexShrink: 0, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }}>
-                        <img 
-                          src={getImageUrl(item.HinhAnh || item.image || item.hinh_anh)} 
-                          alt={item.name} 
-                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                          onError={(e) => { e.target.src = 'https://via.placeholder.com/60?text=No+Img' }}
-                        />
-                      </div>
-                      <h4 className="product-name">{item.name}</h4>
-                    </td>
-                    <td className="cart-col-price">{Number(item.price).toLocaleString()} đ</td>
-                    <td className="cart-col-qty">
-                      <div className="qty-control">
-                        <button className="qty-btn" onClick={() => updateQuantity(item.id, -1)}>-</button>
-                        <div className="qty-input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {item.quantity}
+                {cartItems.map((item, idx) => {
+                  const itemId = item.maSP !== undefined ? item.maSP : (item.id !== undefined ? item.id : idx);
+                  return (
+                    <tr key={itemId} className="cart-row">
+                      <td className="cart-col-action">
+                        <button onClick={() => removeItem(itemId)} className="btn-remove">🗑️</button>
+                      </td>
+                      <td className="cart-col-product">
+                        <div className="product-icon" style={{ padding: 0, width: '60px', height: '60px', flexShrink: 0, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }}>
+                          <img 
+                            src={getImageUrl(item.HinhAnh || item.image || item.hinh_anh)} 
+                            alt={item.name || item.TenSP} 
+                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                            onError={(e) => { e.target.src = 'https://via.placeholder.com/60?text=No+Img' }}
+                          />
                         </div>
-                        <button className="qty-btn" onClick={() => updateQuantity(item.id, 1)}>+</button>
-                      </div>
-                    </td>
-                    <td className="cart-col-total">{(Number(item.price) * item.quantity).toLocaleString()} đ</td>
-                  </tr>
-                ))}
+                        <h4 className="product-name">{item.name || item.TenSP}</h4>
+                      </td>
+                      <td className="cart-col-price">{Number(item.price || item.DonGia || 0).toLocaleString()} đ</td>
+                      <td className="cart-col-qty">
+                        <div className="qty-control">
+                          <button className="qty-btn" onClick={() => updateQuantity(itemId, -1)}>-</button>
+                          <div className="qty-input" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {item.quantity}
+                          </div>
+                          <button className="qty-btn" onClick={() => updateQuantity(itemId, 1)}>+</button>
+                        </div>
+                      </td>
+                      <td className="cart-col-total">{(Number(item.price || item.DonGia || 0) * item.quantity).toLocaleString()} đ</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 

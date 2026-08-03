@@ -4,7 +4,8 @@ import { getImageUrl } from "../../utils/api";
 function ProductForm({
     onAdd,
     categories,
-    editingProduct
+    editingProduct,
+    onCancel
 }) {
 
     const [selectedFile, setSelectedFile] = useState(null);
@@ -57,48 +58,41 @@ function ProductForm({
 
     }, [editingProduct]);
 
-const handleImageChange = (e) => {
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    const file = e.target.files[0];
+        const allow = [
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/webp"
+        ];
 
-    if (!file) return;
+        if (!allow.includes(file.type)) {
+            setErrors(prev => ({
+                ...prev,
+                image: "Chỉ được chọn JPG, JPEG, PNG hoặc WEBP"
+            }));
+            return;
+        }
 
-    const allow = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp"
-    ];
+        if (file.size > 2 * 1024 * 1024) {
+            setErrors(prev => ({
+                ...prev,
+                image: "Ảnh tối đa 2MB"
+            }));
+            return;
+        }
 
-    if (!allow.includes(file.type)) {
+        setErrors(prev => ({
+            ...prev,
+            image: ""
+        }));
 
-        setErrors({
-            ...errors,
-            image: "Chỉ được chọn JPG, JPEG, PNG hoặc WEBP"
-        });
-
-        return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-
-        setErrors({
-            ...errors,
-            image: "Ảnh tối đa 2MB"
-        });
-
-        return;
-    }
-    setErrors({
-        ...errors,
-        image: ""
-    });
-
-    setSelectedFile(file);
-
-    setPreview(URL.createObjectURL(file));
-
-};
+        setSelectedFile(file);
+        setPreview(URL.createObjectURL(file));
+    };
 
 
 const handleChange = (e) => {
@@ -229,7 +223,7 @@ const validate = () => {
         !editingProduct &&
         !selectedFile
     ) {
-        newErrors.HinhAnh = "Vui lòng chọn hình ảnh";
+        newErrors.image = "Vui lòng chọn hình ảnh";
     }
 
     setErrors(newErrors);
@@ -237,35 +231,36 @@ const validate = () => {
     return Object.keys(newErrors).length === 0;
 
 };
-    const handleSubmit = (e) => {
-
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validate()) return;
         const data = new FormData();
 
         data.append("TenSP", formData.TenSP);
         data.append("MaDM", formData.MaDM);
-        data.append("GiaGoc", formData.GiaGoc); // Thay thế data.append("DonGia", ...)
+        data.append("GiaGoc", formData.GiaGoc);
         data.append("GiamToiDa", formData.GiamToiDa);
         data.append("TuDongGiamGia", formData.TuDongGiamGia);
         data.append("MoTa", formData.MoTa);
         data.append("SoLuongTon", formData.SoLuongTon);
         data.append("DonViTinh", formData.DonViTinh);
-        data.append("TrangThai", formData.TrangThai);
+        data.append("TrangThai", formData.TrangThai === true || formData.TrangThai === 1 || formData.TrangThai === "1" ? 1 : 0);
 
         // lưu tên ảnh cũ
-        data.append("HinhAnh", formData.HinhAnh);
+        data.append("HinhAnh", formData.HinhAnh || "");
 
         // chỉ upload nếu có chọn file mới
         if (selectedFile) {
             data.append("image", selectedFile);
+        }
 
-            };
-        console.log(formData);
-        console.log(formData.MaDM);
-        onAdd(data);    
-        resetForm();      
-};
+        try {
+            await onAdd(data);
+            resetForm();
+        } catch (err) {
+            console.error(err);
+        }
+    };
 const resetForm = () => {
 
     setFormData({
@@ -278,7 +273,7 @@ const resetForm = () => {
         HinhAnh: "",
         SoLuongTon: "",
         DonViTinh: "",
-        TrangThai: true
+        TrangThai: 1
     });
 
     setSelectedFile(null);
@@ -485,21 +480,26 @@ const resetForm = () => {
                     <select
                         className="form-control mb-2"
                         name="TrangThai"
-                        value={formData.TrangThai}
+                        value={formData.TrangThai === 0 || formData.TrangThai === false || String(formData.TrangThai) === "0" || String(formData.TrangThai) === "false" ? 0 : 1}
                         onChange={handleChange}
                     >
-                        <option value={0}>Đang bán</option>
-                        <option value={1}>Đã ẩn</option>
+                        <option value={1}>Đang bán</option>
+                        <option value={0}>Đã ẩn</option>
                     </select>
-                    <button className="btn btn-success">
-                        
-                        {
-                            editingProduct
-                                ? "Cập nhật"
-                                : "Thêm sản phẩm"
-                        }
-
-                    </button>
+                    <div className="d-flex gap-2">
+                        <button type="submit" className="btn btn-success">
+                            {
+                                editingProduct
+                                    ? "Cập nhật"
+                                    : "Thêm sản phẩm"
+                            }
+                        </button>
+                        {editingProduct && onCancel && (
+                            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+                                Hủy
+                            </button>
+                        )}
+                    </div>
 
                 </form>
 

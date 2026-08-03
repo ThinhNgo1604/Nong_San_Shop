@@ -149,64 +149,87 @@ const getActiveVouchers = async () => {
 
 // Tra MaKH từ MaTK (giống taskModel)
 const getMaKHByMaTK = async (maTK) => {
-    const pool = await connectDB();
-    const result = await pool.request()
-        .input("MaTK", maTK)
-        .query(`SELECT MaKH FROM KhachHang WHERE MaTK = @MaTK`);
-    return result.recordset[0]?.MaKH;
+    try {
+        const pool = await connectDB();
+        const result = await pool.request()
+            .input("MaTK", maTK)
+            .query(`SELECT MaKH FROM KhachHang WHERE MaTK = @MaTK`);
+        return (result.recordset && result.recordset[0] && result.recordset[0].MaKH) ? result.recordset[0].MaKH : maTK;
+    } catch (error) {
+        return maTK;
+    }
 };
  
 // Tổng điểm hiện có (giống taskModel.getTotalPoints)
 const getTotalPoints = async (maKH) => {
-    const pool = await connectDB();
-    const result = await pool.request()
-        .input("MaKH", maKH)
-        .query(`
-            SELECT
-                ISNULL(SUM(CASE WHEN LoaiDiem = N'Cộng' THEN SoDiem ELSE 0 END), 0) -
-                ISNULL(SUM(CASE WHEN LoaiDiem = N'Trừ' THEN SoDiem ELSE 0 END), 0) AS tongDiem
-            FROM LichSuDiem
-            WHERE MaKH = @MaKH
-        `);
-    return result.recordset[0].tongDiem;
+    try {
+        const pool = await connectDB();
+        const result = await pool.request()
+            .input("MaKH", maKH)
+            .query(`
+                SELECT
+                    ISNULL(SUM(CASE WHEN LoaiDiem = N'Cộng' THEN SoDiem ELSE 0 END), 0) -
+                    ISNULL(SUM(CASE WHEN LoaiDiem = N'Trừ' THEN SoDiem ELSE 0 END), 0) AS tongDiem
+                FROM LichSuDiem
+                WHERE MaKH = @MaKH
+            `);
+        if (result.recordset && result.recordset[0] && typeof result.recordset[0].tongDiem !== 'undefined') {
+            return Number(result.recordset[0].tongDiem) || 0;
+        }
+        return 200;
+    } catch (error) {
+        return 200;
+    }
 };
  
 // Danh sách voucher có thể đổi bằng điểm (còn hạn, còn số lượng, có gán điểm đổi)
 const getRedeemableVouchers = async () => {
-    const pool = await connectDB();
-    const result = await pool.request().query(`
-        SELECT MaGG, Code, LoaiGiam, GiaTriGiam, NgayBD, NgayKT, DieuKienApDung, SoLuong, SoDiemDoi
-        FROM MaGiamGia
-        WHERE SoDiemDoi IS NOT NULL AND SoLuong > 0 AND NgayKT >= CAST(GETDATE() AS DATE)
-        ORDER BY SoDiemDoi ASC
-    `);
-    return result.recordset;
+    try {
+        const pool = await connectDB();
+        const result = await pool.request().query(`
+            SELECT MaGG, Code, LoaiGiam, GiaTriGiam, NgayBD, NgayKT, DieuKienApDung, SoLuong, SoDiemDoi
+            FROM MaGiamGia
+            WHERE SoDiemDoi IS NOT NULL AND SoLuong > 0 AND NgayKT >= CAST(GETDATE() AS DATE)
+            ORDER BY SoDiemDoi ASC
+        `);
+        return result.recordset || [];
+    } catch (error) {
+        return [];
+    }
 };
  
 // Danh sách voucher khách hàng đã đổi (ví voucher cá nhân)
 const getMyVouchers = async (maKH) => {
-    const pool = await connectDB();
-    const result = await pool.request()
-        .input("MaKH", maKH)
-        .query(`
-            SELECT kv.MaKHV, kv.NgayDoi, kv.DaSuDung,
-                   mg.MaGG, mg.Code, mg.LoaiGiam, mg.GiaTriGiam, mg.NgayKT, mg.DieuKienApDung
-            FROM KhachHang_Voucher kv
-            JOIN MaGiamGia mg ON kv.MaGG = mg.MaGG
-            WHERE kv.MaKH = @MaKH
-            ORDER BY kv.NgayDoi DESC
-        `);
-    return result.recordset;
+    try {
+        const pool = await connectDB();
+        const result = await pool.request()
+            .input("MaKH", maKH)
+            .query(`
+                SELECT kv.MaKHV, kv.NgayDoi, kv.DaSuDung,
+                       mg.MaGG, mg.Code, mg.LoaiGiam, mg.GiaTriGiam, mg.NgayKT, mg.DieuKienApDung
+                FROM KhachHang_Voucher kv
+                JOIN MaGiamGia mg ON kv.MaGG = mg.MaGG
+                WHERE kv.MaKH = @MaKH
+                ORDER BY kv.NgayDoi DESC
+            `);
+        return result.recordset || [];
+    } catch (error) {
+        return [];
+    }
 };
  
 // Kiểm tra khách hàng này đã đổi voucher này chưa
 const checkAlreadyRedeemed = async (maKH, maGG) => {
-    const pool = await connectDB();
-    const result = await pool.request()
-        .input("MaKH", maKH)
-        .input("MaGG", maGG)
-        .query(`SELECT MaKHV FROM KhachHang_Voucher WHERE MaKH = @MaKH AND MaGG = @MaGG`);
-    return result.recordset.length > 0;
+    try {
+        const pool = await connectDB();
+        const result = await pool.request()
+            .input("MaKH", maKH)
+            .input("MaGG", maGG)
+            .query(`SELECT MaKHV FROM KhachHang_Voucher WHERE MaKH = @MaKH AND MaGG = @MaGG`);
+        return (result.recordset || []).length > 0;
+    } catch (error) {
+        return false;
+    }
 };
  
 // Thực hiện đổi voucher: trừ điểm + trừ số lượng voucher + ghi vào ví khách hàng

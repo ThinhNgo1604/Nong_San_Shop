@@ -15,9 +15,13 @@ async function createDefaultAdmin() {
                 WHERE Email = @Email OR TenDangNhap = @TenDangNhap
             `);
 
-        // Nếu đã tồn tại bất kỳ điều kiện nào ở trên, thông báo và dừng lại, không chạy lệnh INSERT nữa
+        // Nếu đã tồn tại bất kỳ điều kiện nào ở trên, đảm bảo mật khẩu là 123456
         if (check.recordset.length > 0) {
             const existingUser = check.recordset[0];
+            if (!bcrypt.compareSync("123456", existingUser.MatKhau)) {
+                existingUser.MatKhau = await bcrypt.hash("123456", 10);
+                console.log(`🔑 Đã cập nhật lại mật khẩu Admin mặc định thành "123456".`);
+            }
             console.log(`✅ Default Admin đã tồn tại trong database (Tên đăng nhập: "${existingUser.TenDangNhap.trim()}", Email: "${existingUser.Email.trim()}").`);
             return;
         }

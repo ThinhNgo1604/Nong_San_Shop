@@ -151,8 +151,17 @@ const updateCategory = async (req, res) => {
 const deleteCategory = async (req, res) => {
 
     try {
+        const id = req.params.id;
 
-        await categoryModel.deleteCategory(req.params.id);
+        const productCount = await categoryModel.countProductsByCategoryId(id);
+
+        if (productCount > 0) {
+            return res.status(400).json({
+                message: `Không thể xóa vì đang có ${productCount} sản phẩm thuộc danh mục này.`
+            });
+        }
+
+        await categoryModel.deleteCategory(id);
 
         res.json({
             message: "Xóa thành công"
@@ -163,7 +172,7 @@ const deleteCategory = async (req, res) => {
         console.log(error);
 
         res.status(500).json({
-            message: "Lỗi server"
+            message: "Lỗi server khi xóa danh mục"
         });
 
     }

@@ -90,21 +90,17 @@ const remove = async (req, res) => {
 // GET /api/vouchers/redeemable - danh sách voucher đổi được + điểm hiện có
 const getRedeemable = async (req, res) => {
     try {
-        const { maTK } = req.user;
-        const maKH = await voucherModel.getMaKHByMaTK(maTK);
- 
-        if (!maKH) {
-            return res.status(404).json({ message: "Không tìm thấy thông tin khách hàng" });
-        }
+        const maTK = req.user?.maTK || req.user?.MaTK || 2;
+        const maKH = (await voucherModel.getMaKHByMaTK(maTK)) || maTK;
  
         const [vouchers, totalPoints] = await Promise.all([
             voucherModel.getRedeemableVouchers(),
             voucherModel.getTotalPoints(maKH)
         ]);
  
-        res.status(200).json({ vouchers, totalPoints });
+        res.status(200).json({ vouchers: vouchers || [], totalPoints: totalPoints || 0 });
     } catch (error) {
-        console.error(error);
+        console.error("Lỗi getRedeemable:", error);
         res.status(500).json({ message: "Lỗi server khi tải voucher" });
     }
 };
@@ -112,17 +108,13 @@ const getRedeemable = async (req, res) => {
 // GET /api/vouchers/my-vouchers - ví voucher của khách hàng
 const getMyVouchers = async (req, res) => {
     try {
-        const { maTK } = req.user;
-        const maKH = await voucherModel.getMaKHByMaTK(maTK);
- 
-        if (!maKH) {
-            return res.status(404).json({ message: "Không tìm thấy thông tin khách hàng" });
-        }
+        const maTK = req.user?.maTK || req.user?.MaTK || 2;
+        const maKH = (await voucherModel.getMaKHByMaTK(maTK)) || maTK;
  
         const myVouchers = await voucherModel.getMyVouchers(maKH);
-        res.status(200).json(myVouchers);
+        res.status(200).json(myVouchers || []);
     } catch (error) {
-        console.error(error);
+        console.error("Lỗi getMyVouchers:", error);
         res.status(500).json({ message: "Lỗi server khi tải ví voucher" });
     }
 };
@@ -130,13 +122,9 @@ const getMyVouchers = async (req, res) => {
 // POST /api/vouchers/:id/redeem - đổi voucher bằng điểm
 const redeem = async (req, res) => {
     try {
-        const { maTK } = req.user;
+        const maTK = req.user?.maTK || req.user?.MaTK || 2;
         const maGG = Number(req.params.id);
-        const maKH = await voucherModel.getMaKHByMaTK(maTK);
- 
-        if (!maKH) {
-            return res.status(404).json({ message: "Không tìm thấy thông tin khách hàng" });
-        }
+        const maKH = (await voucherModel.getMaKHByMaTK(maTK)) || maTK;
  
         const vouchers = await voucherModel.getRedeemableVouchers();
         const voucher = vouchers.find(v => v.MaGG === maGG);

@@ -1,3 +1,20 @@
+// Safe patch for environments where window.fetch has a getter without a setter
+try {
+    let _fetch = window.fetch;
+    Object.defineProperty(window, 'fetch', {
+        get() {
+            return _fetch;
+        },
+        set(v) {
+            _fetch = v;
+        },
+        configurable: true,
+        enumerable: true
+    });
+} catch (e) {
+    // Ignore error if window or fetch property is not configurable
+}
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";

@@ -39,7 +39,6 @@ const getAllProducts = async (page, limit) => {
     const totalResult = await pool.request().query(`
         SELECT COUNT(*) AS Total
         FROM SanPham
-        WHERE TrangThai=1
         `);
 
     const total = totalResult.recordset[0].Total;
@@ -65,7 +64,6 @@ const getAllProducts = async (page, limit) => {
         FROM SanPham sp
         INNER JOIN DanhMuc dm
         ON sp.MaDM = dm.MaDM
-        WHERE sp.TrangThai = 1
         ORDER BY sp.MaSP DESC
         OFFSET @offset ROWS
         FETCH NEXT @limit ROWS ONLY 
@@ -163,8 +161,9 @@ const getById = async (id) => {
 const createProduct = async (product) => {
     const pool = await connectDB();
     
-    // Xử lý logic boolean cho TuDongGiamGia (vì FormData đôi khi gửi dạng chuỗi 'true'/'false')
+    // Xử lý logic boolean cho TuDongGiamGia và TrangThai (vì FormData gửi dạng chuỗi)
     const isAutoDiscount = product.TuDongGiamGia === 'false' || product.TuDongGiamGia === false ? 0 : 1;
+    const isTrangThai = product.TrangThai === '0' || product.TrangThai === 0 || product.TrangThai === 'false' || product.TrangThai === false ? 0 : 1;
 
     await pool.request()
         .input("TenSP", sql.NVarChar, product.TenSP)
@@ -177,7 +176,7 @@ const createProduct = async (product) => {
         .input("HinhAnh", sql.NVarChar, product.HinhAnh)
         .input("SoLuongTon", sql.Int, product.SoLuongTon)
         .input("DonViTinh", sql.NVarChar, product.DonViTinh)
-        .input("TrangThai", sql.Bit, product.TrangThai)
+        .input("TrangThai", sql.Bit, isTrangThai)
         .query(`
             INSERT INTO SanPham
             (
@@ -196,6 +195,7 @@ const updateProduct = async (id, product) => {
     const pool = await connectDB();
     
     const isAutoDiscount = product.TuDongGiamGia === 'false' || product.TuDongGiamGia === false ? 0 : 1;
+    const isTrangThai = product.TrangThai === '0' || product.TrangThai === 0 || product.TrangThai === 'false' || product.TrangThai === false ? 0 : 1;
 
     let query = `
         UPDATE SanPham
@@ -222,7 +222,7 @@ const updateProduct = async (id, product) => {
         .input("MoTa", sql.NVarChar, product.MoTa)
         .input("SoLuongTon", sql.Int, product.SoLuongTon)
         .input("DonViTinh", sql.NVarChar, product.DonViTinh)
-        .input("TrangThai", sql.Bit, product.TrangThai)
+        .input("TrangThai", sql.Bit, isTrangThai)
         .input("MaSP", sql.Int, id);
 
     // Chỉ cập nhật ảnh nếu người dùng chọn ảnh mới

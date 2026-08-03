@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import './ProductDetail.css';
 import TreasureChestWidget from '../../components/TreasureChestWidget/TreasureChestWidget';
@@ -20,10 +20,29 @@ const ProductDetail = () => {
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useState('');
   
+  const [toast, setToast] = useState({ show: false, visible: false, message: '', type: 'success' });
+  const toastTimeoutRef = useRef(null);
+  const fadeTimeoutRef = useRef(null);
+
+  const showToast = (message, type = 'success') => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    if (fadeTimeoutRef.current) clearTimeout(fadeTimeoutRef.current);
+
+    setToast({ show: true, visible: true, message, type });
+
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+      fadeTimeoutRef.current = setTimeout(() => {
+        setToast(prev => ({ ...prev, show: false }));
+      }, 500); // Biến mất hoàn toàn sau 0.5s mờ dần
+    }, 1500); // Giữ hiển thị 1.5s
+  };
+
   const storedUser = JSON.parse(localStorage.getItem("user"));
   const favKey = storedUser ? `favorites_${storedUser.maTK}` : 'favorites';
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     setIsLoading(true);
     Promise.all([
       fetch(`${API_BASE}/api/products/${id}`).then(res => res.json()),
@@ -32,14 +51,15 @@ const ProductDetail = () => {
     ])
     .then(([productData, allProductsData, reviewsData]) => {
       setProduct(productData);
-      const filtered = allProductsData.filter(item => item.MaSP !== parseInt(id)).slice(0, 4);
+      const allList = Array.isArray(allProductsData) ? allProductsData : [];
+      const filtered = allList.filter(item => item && item.MaSP !== parseInt(id)).slice(0, 4);
       setRelatedProducts(filtered);
-      setReviews(reviewsData);
+      setReviews(Array.isArray(reviewsData) ? reviewsData : []);
       setIsLoading(false);
       setQuantity(1); 
 
       const favIds = JSON.parse(localStorage.getItem(favKey) || '[]');
-      setIsFavorite(favIds.includes(productData.MaSP));
+      setIsFavorite(productData && productData.MaSP ? favIds.includes(productData.MaSP) : false);
     })
     .catch(err => { console.error(err); setIsLoading(false); });
 
@@ -68,13 +88,13 @@ const ProductDetail = () => {
         });
 
         if (response.ok) {
-          alert(`🛒 Đã thêm ${quantity} ${product.TenSP} vào giỏ hàng thành công!`);
+          showToast(`Đã thêm ${quantity} ${product.TenSP} vào giỏ hàng thành công!`);
         } else {
-          alert("Có lỗi xảy ra khi thêm vào giỏ.");
+          showToast("Có lỗi xảy ra khi thêm vào giỏ.", "error");
         }
       } catch (error) {
         console.error(error);
-        alert("Lỗi kết nối đến server.");
+        showToast("Lỗi kết nối đến server.", "error");
       }
     } else {
       let localCart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -94,7 +114,7 @@ const ProductDetail = () => {
       }
       
       localStorage.setItem('cart', JSON.stringify(localCart));
-      alert(`🛒 Đã lưu ${quantity} ${product.TenSP} vào giỏ tạm! Vui lòng đăng nhập để đồng bộ.`);
+      showToast(`Đã thêm ${quantity} ${product.TenSP} vào giỏ hàng thành công!`);
     }
   };
 
@@ -319,6 +339,34 @@ const ProductDetail = () => {
         </div>
       </div>
       <TreasureChestWidget />
+
+      {/* Thông báo alert nhỏ ở góc phải, hiển thị 1.5s và mờ dần trong 0.5s */}
+      {toast.show && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '25px',
+            right: '25px',
+            backgroundColor: toast.type === 'error' ? '#d32f2f' : '#2e7d32',
+            color: '#ffffff',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontSize: '14px',
+            fontWeight: '600',
+            opacity: toast.visible ? 1 : 0,
+            transform: toast.visible ? 'translateY(0)' : 'translateY(-10px)',
+            transition: 'opacity 0.5s ease, transform 0.5s ease'
+          }}
+        >
+          <span>{toast.type === 'error' ? '❌' : '🛒'}</span>
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 };

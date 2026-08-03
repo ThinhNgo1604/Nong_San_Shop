@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ScrollToTop from "../components/Common/ScrollToTop";
 
 import AdminLayout from "../layouts/AdminLayout";
 import Dashboard from "../pages/Admin/Dashboard";
@@ -35,6 +36,7 @@ import MyDanhGia from "../pages/User/Profile/MyDanhGia";
 function AppRoutes() {
     return (
         <BrowserRouter>
+            <ScrollToTop />
             <Routes>
                 {/* Website khách - trang chính */}
                 <Route element={<MainLayout />}>

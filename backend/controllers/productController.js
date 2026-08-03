@@ -143,7 +143,9 @@ const createProduct = async (req, res) => {
 
         const product = {
             ...req.body,
-            HinhAnh: req.file ? req.file.filename : null
+            HinhAnh: (req.body.HinhAnh && req.body.HinhAnh !== "")
+                ? req.body.HinhAnh
+                : (req.file ? req.file.filename : null)
         };
 
         // Validate dữ liệu
@@ -156,7 +158,7 @@ const createProduct = async (req, res) => {
         }
 
         // Kiểm tra ảnh
-        if (!req.file) {
+        if (!product.HinhAnh) {
             return res.status(400).json({
                 message: "Vui lòng chọn hình ảnh."
             });
@@ -210,9 +212,9 @@ const updateProduct = async (req, res) => {
 
         const product = {
             ...req.body,
-            HinhAnh: req.file
-                ? req.file.filename
-                : req.body.HinhAnh
+            HinhAnh: (req.body.HinhAnh && req.body.HinhAnh !== "")
+                ? req.body.HinhAnh
+                : (req.file ? req.file.filename : req.body.HinhAnh)
         };
 
         // Validate

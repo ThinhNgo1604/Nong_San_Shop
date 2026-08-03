@@ -51,11 +51,13 @@ function Order() {
     const handleUpdateStatus = async (id, data) => {
         try {
             await updateOrderStatus(id, data);
-            alert("Cập nhật thành công!");
+            alert("Cập nhật trạng thái thành công!");
             setEditingOrder(null);
             fetchOrders();
         } catch (error) {
-            console.log(error);
+            console.error("Lỗi cập nhật trạng thái đơn hàng:", error);
+            const msg = error.response?.data?.message || "Cập nhật trạng thái không thành công.";
+            alert(msg);
         }
     };
 

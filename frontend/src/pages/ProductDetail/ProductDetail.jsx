@@ -135,7 +135,7 @@ const ProductDetail = () => {
   };
 
   const submitReview = async () => {
-    if (!reviewText.trim()) return alert("Vui lòng nhập nội dung đánh giá!");
+    if (!reviewText.trim()) return showToast("Vui lòng nhập nội dung đánh giá!", "error");
     try {
         const res = await fetch(`${API_BASE}/api/reviews`, {
             method: 'POST',
@@ -143,17 +143,17 @@ const ProductDetail = () => {
             body: JSON.stringify({ maTK: storedUser.maTK, maSP: id, soSao: rating, noiDung: reviewText })
         });
         if (res.ok) {
-            alert("Cảm ơn bạn đã đánh giá sản phẩm!");
+            showToast("Cảm ơn bạn đã đánh giá sản phẩm!");
             setReviewText('');
             setRating(5);
             const newReviews = await fetch(`${API_BASE}/api/reviews/product/${id}`).then(r => r.json());
             setReviews(newReviews);
         } else {
             const err = await res.json();
-            alert(err.message);
+            showToast(err.message || "Không thể gửi đánh giá", "error");
         }
     } catch (error) {
-        alert("Lỗi kết nối Server.");
+        showToast("Lỗi kết nối Server.", "error");
     }
   };
 
@@ -340,12 +340,12 @@ const ProductDetail = () => {
       </div>
       <TreasureChestWidget />
 
-      {/* Thông báo alert nhỏ ở góc phải, hiển thị 1.5s và mờ dần trong 0.5s */}
+      {/* Thông báo alert nhỏ ở góc phải bên dưới */}
       {toast.show && (
         <div
           style={{
             position: 'fixed',
-            top: '25px',
+            bottom: '25px',
             right: '25px',
             backgroundColor: toast.type === 'error' ? '#d32f2f' : '#2e7d32',
             color: '#ffffff',
@@ -359,7 +359,7 @@ const ProductDetail = () => {
             fontSize: '14px',
             fontWeight: '600',
             opacity: toast.visible ? 1 : 0,
-            transform: toast.visible ? 'translateY(0)' : 'translateY(-10px)',
+            transform: toast.visible ? 'translateY(0)' : 'translateY(10px)',
             transition: 'opacity 0.5s ease, transform 0.5s ease'
           }}
         >

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getImageUrl } from "../../utils/api";
+import { uploadImageToFirebase } from "../../services/firebase";
 
 function ProductForm({
     onAdd,
@@ -9,6 +10,7 @@ function ProductForm({
 }) {
 
     const [selectedFile, setSelectedFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
     const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
         TenSP: "",
@@ -234,31 +236,42 @@ const validate = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validate()) return;
-        const data = new FormData();
-
-        data.append("TenSP", formData.TenSP);
-        data.append("MaDM", formData.MaDM);
-        data.append("GiaGoc", formData.GiaGoc);
-        data.append("GiamToiDa", formData.GiamToiDa);
-        data.append("TuDongGiamGia", formData.TuDongGiamGia);
-        data.append("MoTa", formData.MoTa);
-        data.append("SoLuongTon", formData.SoLuongTon);
-        data.append("DonViTinh", formData.DonViTinh);
-        data.append("TrangThai", formData.TrangThai === true || formData.TrangThai === 1 || formData.TrangThai === "1" ? 1 : 0);
-
-        // lưu tên ảnh cũ
-        data.append("HinhAnh", formData.HinhAnh || "");
-
-        // chỉ upload nếu có chọn file mới
-        if (selectedFile) {
-            data.append("image", selectedFile);
-        }
+        setUploading(true);
 
         try {
+            let imageUrl = formData.HinhAnh || "";
+            if (selectedFile) {
+                const uploaded = await uploadImageToFirebase(selectedFile);
+                if (uploaded) {
+                    imageUrl = uploaded;
+                }
+            }
+
+            const data = new FormData();
+            data.append("TenSP", formData.TenSP);
+            data.append("MaDM", formData.MaDM);
+            data.append("GiaGoc", formData.GiaGoc);
+            data.append("GiamToiDa", formData.GiamToiDa);
+            data.append("TuDongGiamGia", formData.TuDongGiamGia);
+            data.append("MoTa", formData.MoTa);
+            data.append("SoLuongTon", formData.SoLuongTon);
+            data.append("DonViTinh", formData.DonViTinh);
+            data.append("TrangThai", formData.TrangThai === true || formData.TrangThai === 1 || formData.TrangThai === "1" ? 1 : 0);
+
+            // Gửi URL ảnh (đã upload lên Firebase Storage hoặc base64)
+            data.append("HinhAnh", imageUrl);
+
+            // cũng gửi file mút-tơ nếu backend muốn dùng làm fallback
+            if (selectedFile) {
+                data.append("image", selectedFile);
+            }
+
             await onAdd(data);
             resetForm();
         } catch (err) {
             console.error(err);
+        } finally {
+            setUploading(false);
         }
     };
 const resetForm = () => {
@@ -283,232 +296,193 @@ const resetForm = () => {
 };
 
     return (
-
-        <div className="card mb-4">
-
-            <div className="card-body">
-
-                <h4>
-
-                    {
-                        editingProduct
-                            ? "Sửa sản phẩm"
-                            : "Thêm sản phẩm"
-                    }
-
-                </h4>
+        <div className="card mb-3 border-0 shadow-sm">
+            <div className="card-body p-3">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                    <h5 className="m-0 fw-bold text-success" style={{ fontSize: '1.05rem' }}>
+                        {editingProduct ? "✏️ Sửa sản phẩm" : "➕ Thêm sản phẩm mới"}
+                    </h5>
+                </div>
 
                 <form onSubmit={handleSubmit}>
+                    <div className="row g-2">
+                        {/* Tên sản phẩm */}
+                        <div className="col-md-5">
+                            <label className="form-label small fw-semibold mb-1">Tên sản phẩm *</label>
+                            <input
+                                className={`form-control form-control-sm ${errors.TenSP ? "is-invalid" : ""}`}
+                                placeholder="Nhập tên sản phẩm..."
+                                name="TenSP"
+                                value={formData.TenSP}
+                                onChange={handleChange}
+                            />
+                            {errors.TenSP && <div className="invalid-feedback small">{errors.TenSP}</div>}
+                        </div>
 
-                    <input
-                        className={`form-control mb-1 ${
-                            errors.TenSP
-                                ? "is-invalid"
-                                : formData.TenSP
-                                    ? "is-valid"
-                                    : ""
-                        }`}
-                        placeholder="Nhập tên sản phẩm"
-                        name="TenSP"
-                        value={formData.TenSP}
-                        onChange={handleChange}
-                    />
-
-                    <div className="invalid-feedback">
-                        {errors.TenSP}
-                    </div>
-                    <select
-                        className={`form-control mb-1 ${
-                            errors.MaDM
-                                ? "is-invalid"
-                                : formData.MaDM
-                                ? "is-valid"
-                                : ""
-                        }`}
-                        name="MaDM"
-                        value={formData.MaDM}
-                        onChange={handleChange}
-                    >
-
-                    <option value="">
-                        Chọn danh mục
-                    </option>
-
-                    {
-                        categories.map(category => (
-
-                            <option
-                                key={category.MaDM}
-                                value={category.MaDM}
+                        {/* Danh mục */}
+                        <div className="col-md-3">
+                            <label className="form-label small fw-semibold mb-1">Danh mục *</label>
+                            <select
+                                className={`form-select form-select-sm ${errors.MaDM ? "is-invalid" : ""}`}
+                                name="MaDM"
+                                value={formData.MaDM}
+                                onChange={handleChange}
                             >
-                                {category.TenDM}
-                            </option>
+                                <option value="">-- Chọn danh mục --</option>
+                                {categories.map(category => (
+                                    <option key={category.MaDM} value={category.MaDM}>
+                                        {category.TenDM}
+                                    </option>
+                                ))}
+                            </select>
+                            {errors.MaDM && <div className="invalid-feedback small">{errors.MaDM}</div>}
+                        </div>
 
-                        ))
-                    }
+                        {/* Giá gốc */}
+                        <div className="col-md-2">
+                            <label className="form-label small fw-semibold mb-1">Giá gốc (VNĐ) *</label>
+                            <input
+                                className={`form-control form-control-sm ${errors.GiaGoc ? "is-invalid" : ""}`}
+                                placeholder="VD: 85000"
+                                name="GiaGoc"
+                                value={formData.GiaGoc}
+                                onChange={handleChange}
+                            />
+                            {errors.GiaGoc && <div className="invalid-feedback small">{errors.GiaGoc}</div>}
+                        </div>
 
-                    </select>
-
-                    <div className="invalid-feedback">
-                        {errors.MaDM}
-                    </div>
-
-                   {/* Ô nhập Giá Gốc */}
-                    <input
-                        className={`form-control mb-1 ${errors.GiaGoc ? "is-invalid" : formData.GiaGoc ? "is-valid" : ""}`}
-                        placeholder="Giá gốc (VNĐ)"
-                        name="GiaGoc"
-                        value={formData.GiaGoc}
-                        onChange={handleChange}
-                    />
-                    <div className="invalid-feedback">{errors.GiaGoc}</div>
-
-                    {/* Ô nhập Giảm tối đa (%) */}
-                    <input
-                        type="number"
-                        className="form-control mb-1 mt-2"
-                        placeholder="% Giảm tối đa (VD: 30)"
-                        name="GiamToiDa"
-                        value={formData.GiamToiDa}
-                        onChange={handleChange}
-                    />
-
-                    {/* Chọn chế độ giảm giá */}
-                    <select
-                        className="form-control mb-2 mt-2"
-                        name="TuDongGiamGia"
-                        value={formData.TuDongGiamGia}
-                        onChange={(e) => setFormData({...formData, TuDongGiamGia: e.target.value === 'true'})}
-                    >
-                        <option value={true}>Bật tự động giảm giá theo giờ</option>
-                        <option value={false}>Tắt (Bán đúng giá gốc)</option>
-                    </select>
-
-                    <input
-                        className={`form-control mb-1 ${
-                            errors.SoLuongTon
-                                ? "is-invalid"
-                                : formData.SoLuongTon
-                                    ? "is-valid"
-                                    : ""
-                        }`}
-                        placeholder="Số lượng tồn"
-                        name="SoLuongTon"
-                        value={formData.SoLuongTon}
-                        onChange={handleChange}
-                    />
-
-                    <div className="invalid-feedback">
-                        {errors.SoLuongTon}
-                    </div>
-                    
-                    <input
-                        className={`form-control mb-1 ${
-                            errors.DonViTinh? "is-invalid"
-                            : formData.DonViTinh
-                            ? "is-valid"
-                            : ""}`}
-                        placeholder="Đơn vị tính"
-                        name="DonViTinh"
-                        value={formData.DonViTinh}
-                        onChange={handleChange}
-                    />
-                    <div className="invalid-feedback">
-                    {errors.DonViTinh}
-                    </div>
-
-                    <input
-                        type="file"
-                        className={`form-control ${
-                            errors.image ? "is-invalid" : ""
-                        }`}
-                        accept=".jpg,.jpeg,.png,.webp"
-                        onChange={handleImageChange}
-                    />
-
-                    <div className="invalid-feedback">
-                        {errors.image}
-                    </div>
-                    {
-                        errors.HinhAnh &&
-                        <small className="text-danger">
-                            {errors.HinhAnh}
-                        </small>
-                    }
-                    {!selectedFile && formData.HinhAnh && (
-                        <div className="mb-3">
-                            <p>
-                                <strong>Ảnh hiện tại:</strong> {formData.HinhAnh}
-                            </p>
-
-                            <img
-                                src={getImageUrl(formData.HinhAnh)}
-                                width="120"
-                                style={{ borderRadius: 8 }}
+                        {/* % Giảm tối đa */}
+                        <div className="col-md-2">
+                            <label className="form-label small fw-semibold mb-1">% Giảm tối đa</label>
+                            <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                placeholder="VD: 30"
+                                name="GiamToiDa"
+                                value={formData.GiamToiDa}
+                                onChange={handleChange}
                             />
                         </div>
-                    )}
-                    {selectedFile && (
-                        <div className="mb-3">
-                            <p>
-                                <strong>Ảnh mới:</strong> {selectedFile.name}
-                            </p>
 
-                            <img
-                                src={preview}
-                                width="120"
-                                style={{ borderRadius: 8 }}
+                        {/* Số lượng tồn */}
+                        <div className="col-md-2">
+                            <label className="form-label small fw-semibold mb-1">Tồn kho *</label>
+                            <input
+                                className={`form-control form-control-sm ${errors.SoLuongTon ? "is-invalid" : ""}`}
+                                placeholder="VD: 100"
+                                name="SoLuongTon"
+                                value={formData.SoLuongTon}
+                                onChange={handleChange}
                             />
+                            {errors.SoLuongTon && <div className="invalid-feedback small">{errors.SoLuongTon}</div>}
                         </div>
-                    )}
-                    <textarea
-                        className={`form-control mb-1 ${
-                        errors.MoTa
-                        ? "is-invalid"
-                        : formData.MoTa
-                        ? "is-valid"
-                        : ""
-                        }`}
-                        placeholder="Mô tả"
-                        name="MoTa"
-                        value={formData.MoTa}
-                        onChange={handleChange}
-                    />
-                    <div className="invalid-feedback">
-                    {errors.MoTa}
+
+                        {/* Đơn vị tính */}
+                        <div className="col-md-2">
+                            <label className="form-label small fw-semibold mb-1">Đơn vị *</label>
+                            <input
+                                className={`form-control form-control-sm ${errors.DonViTinh ? "is-invalid" : ""}`}
+                                placeholder="VD: Kg, Túi"
+                                name="DonViTinh"
+                                value={formData.DonViTinh}
+                                onChange={handleChange}
+                            />
+                            {errors.DonViTinh && <div className="invalid-feedback small">{errors.DonViTinh}</div>}
+                        </div>
+
+                        {/* Tự động giảm giá */}
+                        <div className="col-md-3">
+                            <label className="form-label small fw-semibold mb-1">Giảm giá tự động</label>
+                            <select
+                                className="form-select form-select-sm"
+                                name="TuDongGiamGia"
+                                value={formData.TuDongGiamGia}
+                                onChange={(e) => setFormData({...formData, TuDongGiamGia: e.target.value === 'true'})}
+                            >
+                                <option value={true}>Bật theo khung giờ</option>
+                                <option value={false}>Tắt (Bán đúng giá)</option>
+                            </select>
+                        </div>
+
+                        {/* Trạng thái */}
+                        <div className="col-md-2">
+                            <label className="form-label small fw-semibold mb-1">Trạng thái</label>
+                            <select
+                                className="form-select form-select-sm"
+                                name="TrangThai"
+                                value={formData.TrangThai === 0 || formData.TrangThai === false || String(formData.TrangThai) === "0" || String(formData.TrangThai) === "false" ? 0 : 1}
+                                onChange={handleChange}
+                            >
+                                <option value={1}>Đang bán</option>
+                                <option value={0}>Đã ẩn</option>
+                            </select>
+                        </div>
+
+                        {/* Hình ảnh */}
+                        <div className="col-md-3">
+                            <label className="form-label small fw-semibold mb-1">Hình ảnh</label>
+                            <input
+                                type="file"
+                                className={`form-control form-control-sm ${errors.image ? "is-invalid" : ""}`}
+                                accept=".jpg,.jpeg,.png,.webp"
+                                onChange={handleImageChange}
+                            />
+                            {errors.image && <div className="invalid-feedback small">{errors.image}</div>}
+                            {errors.HinhAnh && <small className="text-danger d-block">{errors.HinhAnh}</small>}
+                        </div>
+
+                        {/* Mô tả */}
+                        <div className="col-md-10">
+                            <label className="form-label small fw-semibold mb-1">Mô tả sản phẩm *</label>
+                            <textarea
+                                className={`form-control form-control-sm ${errors.MoTa ? "is-invalid" : ""}`}
+                                rows="2"
+                                placeholder="Nhập mô tả sản phẩm..."
+                                name="MoTa"
+                                value={formData.MoTa}
+                                onChange={handleChange}
+                            />
+                            {errors.MoTa && <div className="invalid-feedback small">{errors.MoTa}</div>}
+                        </div>
+
+                        {/* Previews ảnh */}
+                        <div className="col-md-2 d-flex align-items-center">
+                            {(preview || formData.HinhAnh) && (
+                                <div className="d-flex align-items-center gap-2 mt-2">
+                                    <img
+                                        src={preview || getImageUrl(formData.HinhAnh)}
+                                        alt="Preview"
+                                        style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #ddd' }}
+                                    />
+                                    <span className="small text-muted text-truncate" style={{ maxWidth: '90px' }}>
+                                        {selectedFile ? selectedFile.name : (formData.HinhAnh ? "Ảnh hiện tại" : "")}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <select
-                        className="form-control mb-2"
-                        name="TrangThai"
-                        value={formData.TrangThai === 0 || formData.TrangThai === false || String(formData.TrangThai) === "0" || String(formData.TrangThai) === "false" ? 0 : 1}
-                        onChange={handleChange}
-                    >
-                        <option value={1}>Đang bán</option>
-                        <option value={0}>Đã ẩn</option>
-                    </select>
-                    <div className="d-flex gap-2">
-                        <button type="submit" className="btn btn-success">
-                            {
-                                editingProduct
-                                    ? "Cập nhật"
-                                    : "Thêm sản phẩm"
-                            }
-                        </button>
+
+                    <div className="d-flex gap-2 justify-content-end mt-2">
                         {editingProduct && onCancel && (
-                            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={onCancel} disabled={uploading}>
                                 Hủy
                             </button>
                         )}
+                        <button type="submit" className="btn btn-sm btn-success px-3" disabled={uploading}>
+                            {uploading ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    Đang xử lý ảnh...
+                                </>
+                            ) : (
+                                editingProduct ? "Cập nhật sản phẩm" : "Thêm sản phẩm"
+                            )}
+                        </button>
                     </div>
-
                 </form>
-
             </div>
-
         </div>
-
     );
-
 }
 
 export default ProductForm;

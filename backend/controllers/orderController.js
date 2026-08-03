@@ -37,6 +37,10 @@ const updateStatus = async (req, res) => {
         // 1. Lấy trạng thái hiện tại của đơn hàng từ Database
         const currentOrder = await orderModel.getOrderStatusById(orderId);
         
+        if (!currentOrder) {
+            return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+        }
+
         // Cập nhật điều kiện: Không cho hủy nếu TRẠNG THÁI HIỆN TẠI ĐÃ LÀ THANH TOÁN
         if (
             newStatus === "Đã hủy" &&
@@ -45,9 +49,6 @@ const updateStatus = async (req, res) => {
             return res.status(400).json({
                 message: "Đơn hàng đã thanh toán không thể hủy."
             });
-        }
-        if (!currentOrder) {
-            return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
         }
 
         const currentStatus = currentOrder.TrangThaiDonHang;
@@ -62,7 +63,7 @@ const updateStatus = async (req, res) => {
         };
 
         // 3. Kiểm tra tính hợp lệ của thao tác chuyển đổi
-        const validOptions = allowedTransitions[currentStatus] || [currentStatus];
+        const validOptions = allowedTransitions[currentStatus] || ["Chờ xác nhận", "Đã xác nhận", "Đang giao", "Đã giao", "Đã hủy"];
         
         if (!validOptions.includes(newStatus)) {
             return res.status(400).json({ 

@@ -12,7 +12,8 @@ import {
   query, 
   where 
 } from 'firebase/firestore';
-import firebaseConfigData from '../../firebase-applet-config.json';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import firebaseConfigData from '../../../firebase-applet-config.json';
 
 const firebaseConfig = {
   apiKey: firebaseConfigData.apiKey,
@@ -29,6 +30,26 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 export const db = firebaseConfigData.firestoreDatabaseId 
   ? getFirestore(app, firebaseConfigData.firestoreDatabaseId)
   : getFirestore(app);
+
+export const storage = getStorage(app);
+
+export async function uploadImageToFirebase(file) {
+  if (!file) return null;
+  try {
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storageRef = ref(storage, `products/${Date.now()}_${cleanFileName}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
+  } catch (error) {
+    console.warn("Firebase Storage upload encountered issue, fallback to Data URL:", error);
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  }
+}
 
 // Initial mock seed data to populate Firestore on first load
 const INITIAL_DATA = {

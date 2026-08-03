@@ -71,7 +71,10 @@ const mockStore = {
     ThongBao: [
         { MaTB: 1, MaKH: 2, TieuDe: "Đơn hàng đã được giao thành công", NoiDung: "Đơn hàng #101 của bạn đã giao hoàn tất. Cảm ơn bạn đã mua hàng tại Nông Sản Shop!", DaDoc: false, NgayTao: new Date().toISOString() }
     ],
-    DanhGia: [],
+    DanhGia: [
+        { MaDG: 1, MaKH: 2, MaSP: 1, SoSao: 5, NoiDung: "Táo rất tươi ngon, giòn ngọt, đóng gói cẩn thận!", NgayDG: new Date(Date.now() - 86400000 * 2).toISOString() },
+        { MaDG: 2, MaKH: 2, MaSP: 3, SoSao: 5, NoiDung: "Dâu tây mọng nước, giao hàng nhanh.", NgayDG: new Date(Date.now() - 86400000).toISOString() }
+    ],
     DiaChi: [
         { MaDC: 1, MaKH: 2, HoTen: "Nguyễn Văn Khách", SoDienThoai: "0987654321", DiaChiChiTiet: "123 Đường Nguyễn Huệ, Q.1, TP.HCM", MacDinh: 1 }
     ]
@@ -146,11 +149,90 @@ function createMockPool() {
             const inputs = {};
             const reqObj = {
                 input(name, type, val) {
-                    inputs[name] = val;
+                    if (val === undefined) {
+                        inputs[name] = type;
+                    } else {
+                        inputs[name] = val;
+                    }
                     return reqObj;
                 },
                 async query(queryString) {
                     const q = queryString.trim().toUpperCase();
+
+                    // --- DONHANG INSERTION (PRIORITY) ---
+                    if (q.includes("INSERT INTO DONHANG")) {
+                        let newMaDC = undefined;
+                        if (q.includes("INSERT INTO SODIACHI")) {
+                            const maxMaDC = (mockStore.DiaChi || []).reduce((max, d) => Math.max(max, Number(d.MaDC) || 0), 0);
+                            newMaDC = maxMaDC + 1;
+                            const newDC = {
+                                MaDC: newMaDC,
+                                MaKH: Number(inputs.MaKH) || 2,
+                                HoTen: inputs.HoTen || "Khách Hàng",
+                                SoDienThoai: inputs.SoDienThoai || "0987654321",
+                                DiaChiChiTiet: inputs.DiaChiChiTiet || inputs.DiaChi || "",
+                                MacDinh: 0
+                            };
+                            if (!mockStore.DiaChi) mockStore.DiaChi = [];
+                            mockStore.DiaChi.push(newDC);
+                        }
+
+                        const maxMaDH = mockStore.DonHang.reduce((max, d) => Math.max(max, Number(d.MaDH) || 0), 100);
+                        const newMaDH = maxMaDH + 1;
+                        const maKH = Number(inputs.MaKH) || 2;
+                        const maDC = newMaDC || Number(inputs.MaDC) || undefined;
+                        const kh = mockStore.KhachHang.find(k => Number(k.MaKH) === maKH);
+                        const dc = (mockStore.DiaChi || []).find(c => Number(c.MaDC) === maDC);
+
+                        const newOrder = {
+                            MaDH: newMaDH,
+                            MaKH: maKH,
+                            MaDC: maDC,
+                            TenKhachHang: inputs.HoTen || inputs.TenKhachHang || (kh ? kh.HoTen : "Nguyễn Văn Khách"),
+                            NguoiNhan: (dc ? dc.HoTen : null) || inputs.HoTen || inputs.NguoiNhan || inputs.TenNguoiNhan || (kh ? kh.HoTen : "Nguyễn Văn Khách"),
+                            SoDienThoai: (dc ? dc.SoDienThoai : null) || inputs.SoDienThoai || (kh ? kh.SoDienThoai : "0987654321"),
+                            DiaChiChiTiet: (dc ? dc.DiaChiChiTiet : null) || inputs.DiaChi || inputs.DiaChiChiTiet || (kh ? kh.DiaChi : "123 Đường Nguyễn Huệ, Q.1, TP.HCM"),
+                            NgayDat: new Date().toISOString(),
+                            PhiVanChuyen: Number(inputs.PhiVanChuyen) || 30000,
+                            TongTien: Number(inputs.TongTien) || 0,
+                            TrangThaiDonHang: inputs.TrangThaiDH || inputs.TrangThaiDonHang || "Chờ xác nhận",
+                            TrangThaiThanhToan: inputs.TrangThaiTT || inputs.TrangThaiThanhToan || "Chưa thanh toán"
+                        };
+                        mockStore.DonHang.unshift(newOrder);
+                        syncDocToFirebase("DonHang", newOrder);
+
+                        // Parse chi tiết đơn hàng chèn kèm nếu có
+                        if (q.includes("INSERT INTO CHITIETDONHANG")) {
+                            const ctMatch = q.match(/INSERT INTO CHITIETDONHANG\s*\([^)]+\)\s*VALUES\s*(.+?);/i) || q.match(/INSERT INTO CHITIETDONHANG[^\n\r]+VALUES\s*(.+)/i);
+                            if (ctMatch) {
+                                const valuesStr = ctMatch[1];
+                                const tupleRegex = /\(([^)]+)\)/g;
+                                let match;
+                                while ((match = tupleRegex.exec(valuesStr)) !== null) {
+                                    const tuple = match[1].split(',').map(s => s.trim());
+                                    if (tuple.length >= 5) {
+                                        const maSP = Number(tuple[1]);
+                                        const soLuong = Number(tuple[2]);
+                                        const donGia = Number(tuple[3]);
+                                        const thanhTien = Number(tuple[4]);
+                                        const sp = mockStore.SanPham.find(s => Number(s.MaSP) === maSP);
+                                        const newCT = {
+                                            MaDH: newMaDH,
+                                            MaSP: maSP,
+                                            TenSP: sp ? sp.TenSP : "Sản phẩm",
+                                            SoLuong: soLuong,
+                                            DonGia: donGia,
+                                            ThanhTien: thanhTien
+                                        };
+                                        mockStore.ChiTietDonHang.push(newCT);
+                                        syncDocToFirebase("ChiTietDonHang", newCT);
+                                    }
+                                }
+                            }
+                        }
+
+                        return { recordset: [{ maDH: newMaDH, MaDH: newMaDH }] };
+                    }
 
                     // --- SELECT TAIKHOAN ---
                     if (q.includes("FROM TAIKHOAN")) {
@@ -546,6 +628,8 @@ function createMockPool() {
                         return { recordset: list };
                     }
 
+                    // --- DONHANG UPDATE / SELECT ---
+
                     // --- SODIACHI CRUD ---
                     if (q.includes("INSERT INTO SODIACHI")) {
                         const maxMaDC = (mockStore.DiaChi || []).reduce((max, d) => Math.max(max, Number(d.MaDC) || 0), 0);
@@ -560,70 +644,6 @@ function createMockPool() {
                         if (!mockStore.DiaChi) mockStore.DiaChi = [];
                         mockStore.DiaChi.push(newDC);
                         return { recordset: [{ MaDC: newDC.MaDC, maDC: newDC.MaDC }] };
-                    }
-
-                    if (q.includes("FROM SODIACHI")) {
-                        let list = mockStore.DiaChi || [];
-                        if (inputs.MaKH) list = list.filter(d => Number(d.MaKH) === Number(inputs.MaKH));
-                        if (inputs.MaDC) list = list.filter(d => Number(d.MaDC) === Number(inputs.MaDC));
-                        return { recordset: list };
-                    }
-
-                    if (q.includes("UPDATE SODIACHI")) {
-                        return { recordset: [] };
-                    }
-
-                    // --- DONHANG CRUD ---
-                    if (q.includes("INSERT INTO DONHANG")) {
-                        const maxMaDH = mockStore.DonHang.reduce((max, d) => Math.max(max, Number(d.MaDH) || 0), 100);
-                        const newMaDH = maxMaDH + 1;
-                        const newOrder = {
-                            MaDH: newMaDH,
-                            MaKH: Number(inputs.MaKH) || 2,
-                            TenKhachHang: inputs.HoTen || inputs.TenKhachHang || "Nguyễn Văn Khách",
-                            NguoiNhan: inputs.HoTen || inputs.NguoiNhan || inputs.TenNguoiNhan || "Nguyễn Văn Khách",
-                            SoDienThoai: inputs.SoDienThoai || "0987654321",
-                            DiaChiChiTiet: inputs.DiaChi || inputs.DiaChiChiTiet || "123 Đường Nguyễn Huệ, Q.1, TP.HCM",
-                            NgayDat: new Date().toISOString(),
-                            PhiVanChuyen: Number(inputs.PhiVanChuyen) || 30000,
-                            TongTien: Number(inputs.TongTien) || 0,
-                            TrangThaiDonHang: inputs.TrangThaiDH || inputs.TrangThaiDonHang || "Chờ xác nhận",
-                            TrangThaiThanhToan: inputs.TrangThaiTT || inputs.TrangThaiThanhToan || "Chưa thanh toán"
-                        };
-                        mockStore.DonHang.unshift(newOrder);
-                        syncDocToFirebase("DonHang", newOrder);
-
-                        // Parse chi tiết đơn hàng chèn kèm nếu có
-                        if (q.includes("INSERT INTO CHITIETDONHANG")) {
-                            const ctMatch = q.match(/INSERT INTO CHITIETDONHANG\s*\([^)]+\)\s*VALUES\s*(.+?);/i) || q.match(/INSERT INTO CHITIETDONHANG[^\n\r]+VALUES\s*(.+)/i);
-                            if (ctMatch) {
-                                const valuesStr = ctMatch[1];
-                                const tupleRegex = /\(([^)]+)\)/g;
-                                let match;
-                                while ((match = tupleRegex.exec(valuesStr)) !== null) {
-                                    const tuple = match[1].split(',').map(s => s.trim());
-                                    if (tuple.length >= 5) {
-                                        const maSP = Number(tuple[1]);
-                                        const soLuong = Number(tuple[2]);
-                                        const donGia = Number(tuple[3]);
-                                        const thanhTien = Number(tuple[4]);
-                                        const sp = mockStore.SanPham.find(s => Number(s.MaSP) === maSP);
-                                        const newCT = {
-                                            MaDH: newMaDH,
-                                            MaSP: maSP,
-                                            TenSP: sp ? sp.TenSP : "Sản phẩm",
-                                            SoLuong: soLuong,
-                                            DonGia: donGia,
-                                            ThanhTien: thanhTien
-                                        };
-                                        mockStore.ChiTietDonHang.push(newCT);
-                                        syncDocToFirebase("ChiTietDonHang", newCT);
-                                    }
-                                }
-                            }
-                        }
-
-                        return { recordset: [{ maDH: newMaDH, MaDH: newMaDH }] };
                     }
 
                     if (q.includes("UPDATE DONHANG")) {
@@ -645,12 +665,14 @@ function createMockPool() {
                     if (q.includes("FROM DONHANG")) {
                         let list = mockStore.DonHang.map(d => {
                             const kh = mockStore.KhachHang.find(k => Number(k.MaKH) === Number(d.MaKH));
+                            const dc = (mockStore.DiaChi || []).find(c => Number(c.MaDC) === Number(d.MaDC));
                             return {
                                 ...d,
-                                TenKhachHang: d.TenKhachHang || (kh ? kh.HoTen : "Nguyễn Văn Khách"),
-                                NguoiNhan: d.NguoiNhan || d.TenNguoiNhan || d.TenKhachHang || (kh ? kh.HoTen : "Nguyễn Văn Khách"),
-                                SoDienThoai: d.SoDienThoai || (kh ? kh.SoDienThoai : "0987654321"),
-                                DiaChiChiTiet: d.DiaChiChiTiet || d.DiaChi || (kh ? kh.DiaChi : "123 Đường Nguyễn Huệ, Q.1, TP.HCM"),
+                                MaTK: kh ? kh.MaTK : d.MaTK,
+                                TenKhachHang: (kh ? kh.HoTen : null) || d.TenKhachHang || "Nguyễn Văn Khách",
+                                NguoiNhan: d.NguoiNhan || (dc ? dc.HoTen : null) || d.TenNguoiNhan || d.TenKhachHang || (kh ? kh.HoTen : "Nguyễn Văn Khách"),
+                                SoDienThoai: d.SoDienThoai || (dc ? dc.SoDienThoai : null) || (kh ? kh.SoDienThoai : "0987654321"),
+                                DiaChiChiTiet: d.DiaChiChiTiet || (dc ? dc.DiaChiChiTiet : null) || d.DiaChi || (kh ? kh.DiaChi : "123 Đường Nguyễn Huệ, Q.1, TP.HCM"),
                                 NgayDat: d.NgayDat || d.NgayTao || new Date().toISOString(),
                                 TrangThaiDonHang: d.TrangThaiDonHang || (d.TrangThai === "Đang xử lý" ? "Chờ xác nhận" : d.TrangThai) || "Chờ xác nhận",
                                 TrangThaiThanhToan: d.TrangThaiThanhToan || "Chưa thanh toán"
@@ -661,14 +683,20 @@ function createMockPool() {
                             list = list.filter(d => d.TrangThaiDonHang === inputs.Status);
                         }
                         if (inputs.FromDate) {
-                            const from = new Date(inputs.FromDate);
-                            from.setHours(0, 0, 0, 0);
-                            list = list.filter(d => new Date(d.NgayDat) >= from);
+                            const fromStr = String(inputs.FromDate).split('T')[0];
+                            const parts = fromStr.split('-').map(Number);
+                            if (parts.length === 3 && parts[0]) {
+                                const from = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+                                list = list.filter(d => new Date(d.NgayDat) >= from);
+                            }
                         }
                         if (inputs.ToDate) {
-                            const to = new Date(inputs.ToDate);
-                            to.setHours(23, 59, 59, 999);
-                            list = list.filter(d => new Date(d.NgayDat) <= to);
+                            const toStr = String(inputs.ToDate).split('T')[0];
+                            const parts = toStr.split('-').map(Number);
+                            if (parts.length === 3 && parts[0]) {
+                                const to = new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+                                list = list.filter(d => new Date(d.NgayDat) <= to);
+                            }
                         }
                         if (inputs.MaKH) {
                             list = list.filter(d => Number(d.MaKH) === Number(inputs.MaKH));
@@ -684,7 +712,55 @@ function createMockPool() {
                         if (inputs.MaDH) {
                             list = list.filter(d => Number(d.MaDH) === Number(inputs.MaDH));
                         }
+                        if (inputs.MaSP) {
+                            const validMaDHs = (mockStore.ChiTietDonHang || [])
+                                .filter(ct => Number(ct.MaSP) === Number(inputs.MaSP))
+                                .map(ct => Number(ct.MaDH));
+                            list = list.filter(d => validMaDHs.includes(Number(d.MaDH)));
+                        }
                         list.sort((a, b) => Number(b.MaDH) - Number(a.MaDH));
+                        return { recordset: list };
+                    }
+
+                    // --- DANHGIA CRUD ---
+                    if (q.includes("INSERT INTO DANHGIA")) {
+                        const maxMaDG = (mockStore.DanhGia || []).reduce((max, d) => Math.max(max, Number(d.MaDG) || 0), 0);
+                        const newMaDG = maxMaDG + 1;
+                        const newDG = {
+                            MaDG: newMaDG,
+                            MaKH: Number(inputs.MaKH) || 2,
+                            MaSP: Number(inputs.MaSP) || 1,
+                            SoSao: Number(inputs.SoSao) || 5,
+                            NoiDung: inputs.NoiDung || "",
+                            NgayDG: new Date().toISOString()
+                        };
+                        if (!mockStore.DanhGia) mockStore.DanhGia = [];
+                        mockStore.DanhGia.unshift(newDG);
+                        syncDocToFirebase("DanhGia", newDG);
+                        return { recordset: [newDG] };
+                    }
+
+                    if (q.includes("FROM DANHGIA")) {
+                        let list = (mockStore.DanhGia || []).map(dg => {
+                            const kh = (mockStore.KhachHang || []).find(k => Number(k.MaKH) === Number(dg.MaKH));
+                            const sp = (mockStore.SanPham || []).find(s => Number(s.MaSP) === Number(dg.MaSP));
+                            return {
+                                ...dg,
+                                HoTen: kh ? kh.HoTen : (dg.HoTen || "Khách hàng"),
+                                MaTK: kh ? kh.MaTK : dg.MaKH,
+                                TenSP: sp ? sp.TenSP : "Sản phẩm",
+                                HinhAnh: sp ? sp.HinhAnh : ""
+                            };
+                        });
+
+                        if (inputs.MaSP) {
+                            list = list.filter(dg => Number(dg.MaSP) === Number(inputs.MaSP));
+                        }
+                        if (inputs.MaTK) {
+                            list = list.filter(dg => Number(dg.MaTK) === Number(inputs.MaTK) || Number(dg.MaKH) === Number(inputs.MaTK));
+                        }
+
+                        list.sort((a, b) => new Date(b.NgayDG) - new Date(a.NgayDG));
                         return { recordset: list };
                     }
 

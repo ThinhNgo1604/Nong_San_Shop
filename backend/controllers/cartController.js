@@ -133,7 +133,9 @@ const checkoutCart = async (req, res) => {
                 BEGIN CATCH ROLLBACK TRAN; THROW; END CATCH
             `);
 
-        return res.json({ message: "Chốt đơn thành công!", maDH: resultGuest.recordset[0].maDH });
+        console.log("DEBUG resultGuest:", resultGuest);
+        const maDH = (resultGuest && resultGuest.recordset && resultGuest.recordset[0]) ? (resultGuest.recordset[0].maDH || resultGuest.recordset[0].MaDH) : null;
+        return res.json({ message: "Chốt đơn thành công!", maDH });
     } 
 
     // ===== NHÁNH 2: LOGIC USER CÓ TÀI KHOẢN (SỬ DỤNG REDIS) =====
@@ -238,7 +240,8 @@ const checkoutCart = async (req, res) => {
     // Xóa giỏ hàng trong Redis sau khi chốt đơn xong
     await redisClient.del(redisKey);
 
-    return res.json({ message: "Chốt đơn thành công!", maDH: resultUser.recordset[0].maDH });
+    const maDH = (resultUser && resultUser.recordset && resultUser.recordset[0]) ? (resultUser.recordset[0].maDH || resultUser.recordset[0].MaDH) : null;
+    return res.json({ message: "Chốt đơn thành công!", maDH });
   } catch (error) {
     console.error("Lỗi khi chốt đơn:", error);
     res.status(500).json({ message: "Lỗi hệ thống khi thanh toán", error: error.message });

@@ -32,7 +32,7 @@ function StatusModal({ order, onSave, onClose }) {
         "Đã hủy": ["Đã hủy"]    
     };
 
-    const validOptions = allowedTransitions[currentStatus] || [currentStatus];
+    const validOptions = allowedTransitions[currentStatus] || ["Chờ xác nhận", "Đã xác nhận", "Đang giao", "Đã giao", "Đã hủy"];
     const isTerminalState = currentStatus === "Đã giao" || currentStatus === "Đã hủy";
 
     return (

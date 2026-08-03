@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { API_BASE } from "../../utils/api";
 
 function Login() {
     const navigate = useNavigate();
@@ -44,8 +45,7 @@ function Login() {
         try {
             setLoading(true);
 
-            const apiBase = import.meta.env.VITE_API_URL || "";
-            const res = await fetch(`${apiBase}/api/auth/login`, {
+            const res = await fetch(`${API_BASE}/api/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
@@ -66,8 +66,7 @@ function Login() {
             // ĐỒNG BỘ GIỎ HÀNG (Chạy ngầm)
             const localCart = JSON.parse(localStorage.getItem('cart') || '[]');
             if (localCart.length > 0) {
-                const apiBase = import.meta.env.VITE_API_URL || "";
-                fetch(`${apiBase}/api/cart/merge`, {
+                fetch(`${API_BASE}/api/cart/merge`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

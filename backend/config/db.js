@@ -131,9 +131,26 @@ function createMockPool() {
                     // --- SELECT TAIKHOAN ---
                     if (q.includes("FROM TAIKHOAN")) {
                         let list = [...mockStore.TaiKhoan];
-                        if (inputs.Email) list = list.filter(u => u.Email && u.Email.toLowerCase() === String(inputs.Email).toLowerCase());
-                        if (inputs.TenDangNhap) list = list.filter(u => u.TenDangNhap && u.TenDangNhap.toLowerCase() === String(inputs.TenDangNhap).toLowerCase());
+                        if (inputs.Email) {
+                            const val = String(inputs.Email).toLowerCase().trim();
+                            list = list.filter(u => 
+                                (u.Email && u.Email.toLowerCase().trim() === val) || 
+                                (u.TenDangNhap && u.TenDangNhap.toLowerCase().trim() === val)
+                            );
+                        }
+                        if (inputs.TenDangNhap && !inputs.Email) {
+                            const val = String(inputs.TenDangNhap).toLowerCase().trim();
+                            list = list.filter(u => u.TenDangNhap && u.TenDangNhap.toLowerCase().trim() === val);
+                        }
                         if (inputs.MaTK) list = list.filter(u => u.MaTK === Number(inputs.MaTK));
+                        
+                        list = list.map(u => {
+                            const kh = mockStore.KhachHang.find(k => k.MaTK === u.MaTK || (k.Email && k.Email === u.Email));
+                            return {
+                                ...u,
+                                HoTen: kh ? kh.HoTen : (u.TenDangNhap || "Khách Hàng")
+                            };
+                        });
                         return { recordset: list };
                     }
 

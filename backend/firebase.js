@@ -17,12 +17,9 @@ const fs = require("fs");
 
 let config = {};
 try {
-    const configPath = path.join(__dirname, "../firebase-applet-config.json");
-    if (fs.existsSync(configPath)) {
-        config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    }
+    config = require("../firebase-applet-config.json");
 } catch (err) {
-    console.error("⚠️ Lỗi đọc firebase-applet-config.json:", err);
+    console.warn("⚠️ không tìm thấy firebase-applet-config.json:", err.message);
 }
 
 const firebaseConfig = {

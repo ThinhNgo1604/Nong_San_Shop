@@ -46,18 +46,26 @@ app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
-// Kết nối Database
-connectDB();
+// Khởi tạo DB & Admin mặc định (chạy cả trên Serverless Vercel)
+let initPromise = null;
+app.use(async (req, res, next) => {
+    if (!initPromise) {
+        initPromise = (async () => {
+            try {
+                await connectDB();
+                await createDefaultAdmin();
+            } catch (err) {
+                console.error("Init DB Error:", err);
+            }
+        })();
+    }
+    await initPromise;
+    next();
+});
 
 // ===== ROUTES =====
 app.use("/api/categories", categoryRoutes);
-
-
 app.use("/api/auth", authRoutes); 
-
-app.use("/api/auth", authRoutes);
-
-
 app.use('/api/products', productRoutes);
 
 app.use('/api/cart', cartRoutes);

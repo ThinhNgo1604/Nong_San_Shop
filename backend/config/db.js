@@ -282,10 +282,20 @@ function createMockPool() {
                         if (inputs.MaTK) list = list.filter(u => u.MaTK === Number(inputs.MaTK));
                         
                         list = list.map(u => {
-                            const kh = mockStore.KhachHang.find(k => k.MaTK === u.MaTK || (k.Email && k.Email === u.Email));
+                            const kh = (mockStore.KhachHang || []).find(k => Number(k.MaTK) === Number(u.MaTK) || (k.Email && u.Email && k.Email.toLowerCase().trim() === u.Email.toLowerCase().trim()));
+                            const avatar = (kh && kh.HinhAnh) || u.HinhAnh || u.AvatarKhachHang || "";
+                            const hoTen = (kh && kh.HoTen) || u.HoTen || u.TenDangNhap || "Khách Hàng";
+                            const sdt = (kh && kh.SoDienThoai) || u.SoDienThoai || "";
+                            const gioiTinh = (kh && kh.GioiTinh) || u.GioiTinh || "";
+                            const ngaySinh = (kh && kh.NgaySinh) || u.NgaySinh || "";
                             return {
                                 ...u,
-                                HoTen: kh ? kh.HoTen : (u.TenDangNhap || "Khách Hàng")
+                                HoTen: hoTen,
+                                SoDienThoai: sdt,
+                                GioiTinh: gioiTinh,
+                                NgaySinh: ngaySinh,
+                                HinhAnh: avatar,
+                                AvatarKhachHang: avatar
                             };
                         });
                         return { recordset: list };
@@ -664,6 +674,9 @@ function createMockPool() {
                         if (!targetTk && targetKh) {
                             targetTk = (mockStore.TaiKhoan || []).find(u => Number(u.MaTK) === Number(targetKh.MaTK) || (u.Email && targetKh.Email && u.Email.toLowerCase() === targetKh.Email.toLowerCase()));
                         }
+                        if (!targetKh && targetTk) {
+                            targetKh = (mockStore.KhachHang || []).find(k => Number(k.MaTK) === Number(targetTk.MaTK) || (k.Email && targetTk.Email && k.Email.toLowerCase() === targetTk.Email.toLowerCase()));
+                        }
 
                         const isBoolStatus = inputs.TrangThai === true || inputs.TrangThai === 1 || inputs.TrangThai === "1" || inputs.TrangThai === "true";
 
@@ -673,8 +686,13 @@ function createMockPool() {
                             } else if (inputs.TrangThai !== undefined) {
                                 targetKh.TrangThai = isBoolStatus;
                             }
-                            if (inputs.SoDienThoai) targetKh.SoDienThoai = inputs.SoDienThoai;
-                            if (inputs.HinhAnh) targetKh.HinhAnh = inputs.HinhAnh;
+                            if (inputs.HoTen && inputs.HoTen !== null) targetKh.HoTen = inputs.HoTen;
+                            if (inputs.SoDienThoai && inputs.SoDienThoai !== null) targetKh.SoDienThoai = inputs.SoDienThoai;
+                            if (inputs.GioiTinh && inputs.GioiTinh !== null) targetKh.GioiTinh = inputs.GioiTinh;
+                            if (inputs.NgaySinh && inputs.NgaySinh !== null) targetKh.NgaySinh = inputs.NgaySinh;
+                            if (inputs.HinhAnh && typeof inputs.HinhAnh === 'string' && inputs.HinhAnh.trim() !== '') {
+                                targetKh.HinhAnh = inputs.HinhAnh;
+                            }
                             syncDocToFirebase("KhachHang", targetKh);
                         }
 
@@ -684,8 +702,13 @@ function createMockPool() {
                             } else if (inputs.TrangThai !== undefined) {
                                 targetTk.TrangThai = isBoolStatus;
                             }
-                            if (inputs.SoDienThoai) targetTk.SoDienThoai = inputs.SoDienThoai;
-                            if (inputs.HinhAnh) targetTk.HinhAnh = inputs.HinhAnh;
+                            if (inputs.HoTen && inputs.HoTen !== null) targetTk.HoTen = inputs.HoTen;
+                            if (inputs.SoDienThoai && inputs.SoDienThoai !== null) targetTk.SoDienThoai = inputs.SoDienThoai;
+                            if (inputs.GioiTinh && inputs.GioiTinh !== null) targetTk.GioiTinh = inputs.GioiTinh;
+                            if (inputs.NgaySinh && inputs.NgaySinh !== null) targetTk.NgaySinh = inputs.NgaySinh;
+                            if (inputs.HinhAnh && typeof inputs.HinhAnh === 'string' && inputs.HinhAnh.trim() !== '') {
+                                targetTk.HinhAnh = inputs.HinhAnh;
+                            }
                             syncDocToFirebase("TaiKhoan", targetTk);
                         } else if (targetKh) {
                             const newTk = {
@@ -693,7 +716,7 @@ function createMockPool() {
                                 TenDangNhap: targetKh.Email || targetKh.HoTen,
                                 Email: targetKh.Email,
                                 SoDienThoai: targetKh.SoDienThoai || "",
-                                HinhAnh: inputs.HinhAnh || targetKh.HinhAnh || "",
+                                HinhAnh: (inputs.HinhAnh && typeof inputs.HinhAnh === 'string' && inputs.HinhAnh.trim() !== '') ? inputs.HinhAnh : (targetKh.HinhAnh || ""),
                                 VaiTro: "KhachHang",
                                 TrangThai: (targetKh.Email === "admin@gmail.com") ? true : isBoolStatus
                             };
@@ -708,21 +731,58 @@ function createMockPool() {
                         const maTK = inputs.MaTK;
                         const maKH = inputs.MaKH;
                         let targetKh = null;
+                        let targetTk = null;
+
                         if (maTK) {
                             targetKh = (mockStore.KhachHang || []).find(k => Number(k.MaTK) === Number(maTK) || Number(k.MaKH) === Number(maTK));
+                            targetTk = (mockStore.TaiKhoan || []).find(u => Number(u.MaTK) === Number(maTK));
                         }
                         if (!targetKh && maKH) {
                             targetKh = (mockStore.KhachHang || []).find(k => Number(k.MaKH) === Number(maKH));
+                        }
+                        if (!targetTk && targetKh) {
+                            targetTk = (mockStore.TaiKhoan || []).find(u => Number(u.MaTK) === Number(targetKh.MaTK) || (u.Email && targetKh.Email && u.Email.toLowerCase() === targetKh.Email.toLowerCase()));
+                        }
+
+                        if (!targetKh && (maTK || targetTk)) {
+                            const maxMaKH = (mockStore.KhachHang || []).reduce((max, k) => Math.max(max, Number(k.MaKH) || 0), 0);
+                            targetKh = {
+                                MaKH: maxMaKH + 1,
+                                MaTK: maTK ? Number(maTK) : (targetTk ? Number(targetTk.MaTK) : undefined),
+                                HoTen: inputs.HoTen || (targetTk ? (targetTk.HoTen || targetTk.TenDangNhap) : "Khách Hàng"),
+                                Email: targetTk ? targetTk.Email : "",
+                                SoDienThoai: inputs.SoDienThoai || (targetTk ? targetTk.SoDienThoai : ""),
+                                GioiTinh: inputs.GioiTinh || "Nam",
+                                NgaySinh: inputs.NgaySinh || "",
+                                HinhAnh: (inputs.HinhAnh && typeof inputs.HinhAnh === 'string' && inputs.HinhAnh.trim() !== '') ? inputs.HinhAnh : (targetTk ? targetTk.HinhAnh : ""),
+                                TrangThai: true
+                            };
+                            if (!mockStore.KhachHang) mockStore.KhachHang = [];
+                            mockStore.KhachHang.push(targetKh);
                         }
 
                         if (targetKh) {
                             if (inputs.HoTen !== undefined && inputs.HoTen !== null) targetKh.HoTen = inputs.HoTen;
                             if (inputs.GioiTinh !== undefined && inputs.GioiTinh !== null) targetKh.GioiTinh = inputs.GioiTinh;
                             if (inputs.NgaySinh !== undefined && inputs.NgaySinh !== null) targetKh.NgaySinh = inputs.NgaySinh;
-                            if (inputs.HinhAnh !== undefined && inputs.HinhAnh !== null) targetKh.HinhAnh = inputs.HinhAnh;
                             if (inputs.SoDienThoai !== undefined && inputs.SoDienThoai !== null) targetKh.SoDienThoai = inputs.SoDienThoai;
+                            if (inputs.HinhAnh && typeof inputs.HinhAnh === 'string' && inputs.HinhAnh.trim() !== '') {
+                                targetKh.HinhAnh = inputs.HinhAnh;
+                            }
                             syncDocToFirebase("KhachHang", targetKh);
                         }
+
+                        if (targetTk) {
+                            if (inputs.HoTen !== undefined && inputs.HoTen !== null) targetTk.HoTen = inputs.HoTen;
+                            if (inputs.GioiTinh !== undefined && inputs.GioiTinh !== null) targetTk.GioiTinh = inputs.GioiTinh;
+                            if (inputs.NgaySinh !== undefined && inputs.NgaySinh !== null) targetTk.NgaySinh = inputs.NgaySinh;
+                            if (inputs.SoDienThoai !== undefined && inputs.SoDienThoai !== null) targetTk.SoDienThoai = inputs.SoDienThoai;
+                            if (inputs.HinhAnh && typeof inputs.HinhAnh === 'string' && inputs.HinhAnh.trim() !== '') {
+                                targetTk.HinhAnh = inputs.HinhAnh;
+                            }
+                            syncDocToFirebase("TaiKhoan", targetTk);
+                        }
+
                         return { recordset: targetKh ? [targetKh] : [] };
                     }
 

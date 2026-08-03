@@ -215,7 +215,7 @@ const updateProfile = async (req, res) => {
         const maTK = req.user.maTK;
         const { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl } = req.body;
 
-        if (!hoTen && !soDienThoai && !avatarUrl) {
+        if (!hoTen && !soDienThoai && !avatarUrl && !gioiTinh && !ngaySinh) {
             return res.status(400).json({
                 message: "Không có thông tin nào để cập nhật"
             });

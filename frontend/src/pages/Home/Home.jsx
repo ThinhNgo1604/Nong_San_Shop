@@ -112,7 +112,7 @@ const Home = () => {
             Danh mục sản phẩm
           </div>
           {categories.map((cat) => (
-            <Link key={cat.name} to="/products" className="hc-sidebar-item hc-sidebar-item-pro">
+            <Link key={cat.name} to={`/products?category=${encodeURIComponent(cat.name)}`} className="hc-sidebar-item hc-sidebar-item-pro">
               <span className="hc-sidebar-item-icon">{cat.icon}</span>
               <span className="hc-sidebar-item-text">{cat.name}</span>
               <span className="hc-sidebar-item-arrow">›</span>

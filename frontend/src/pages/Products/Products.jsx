@@ -11,9 +11,10 @@ const Products = () => {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
-  const [activeCategory, setActiveCategory] = useState(null);
+  const urlCategory = searchParams.get('category') || searchParams.get('danhMuc') || searchParams.get('cat');
+  const [activeCategory, setActiveCategory] = useState(urlCategory || null);
 
   // States cho Lọc giá
   const [minPriceInput, setMinPriceInput] = useState('');
@@ -23,6 +24,12 @@ const Products = () => {
 
   useEffect(() => {
     setSearchTerm(searchParams.get('search') || '');
+    const cat = searchParams.get('category') || searchParams.get('danhMuc') || searchParams.get('cat');
+    if (cat) {
+      setActiveCategory(cat);
+    } else if (searchParams.has('category') || searchParams.has('danhMuc') || searchParams.has('cat')) {
+      setActiveCategory(null);
+    }
   }, [searchParams]);
 
   // Lấy danh mục (Chỉ chạy 1 lần khi load trang)
@@ -69,7 +76,16 @@ const Products = () => {
   // Lọc theo tên sản phẩm và tên danh mục ở Frontend
   const filteredProducts = products
     .filter((p) => (p?.TenSP ?? '').toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter((p) => !activeCategory || p.TenDM === activeCategory);
+    .filter((p) => {
+      if (!activeCategory) return true;
+      if (p.TenDM === activeCategory) return true;
+      if (normalizeText(p.TenDM) === normalizeText(activeCategory)) return true;
+      if (p.MaDM && categories.length > 0) {
+        const foundCat = categories.find(c => c.TenDM === activeCategory || normalizeText(c.TenDM) === normalizeText(activeCategory));
+        if (foundCat && Number(foundCat.MaDM) === Number(p.MaDM)) return true;
+      }
+      return false;
+    });
 
   const getIcon = (name) => {
     const lower = (name ?? '').toLowerCase();
@@ -193,21 +209,39 @@ const Products = () => {
                 <li>
                   <button
                     className={!activeCategory ? 'active' : ''}
-                    onClick={() => setActiveCategory(null)}
+                    onClick={() => {
+                      setActiveCategory(null);
+                      const newParams = new URLSearchParams(searchParams);
+                      newParams.delete('category');
+                      newParams.delete('danhMuc');
+                      newParams.delete('cat');
+                      setSearchParams(newParams);
+                    }}
                   >
                     Tất cả sản phẩm
                   </button>
                 </li>
-                {categories.map((cat) => (
-                  <li key={cat.MaDM}>
-                    <button
-                      className={activeCategory === cat.TenDM ? 'active' : ''}
-                      onClick={() => setActiveCategory(cat.TenDM)}
-                    >
-                      {cat.TenDM}
-                    </button>
-                  </li>
-                ))}
+                {categories.map((cat) => {
+                  const isActive = activeCategory && (
+                    activeCategory === cat.TenDM || 
+                    normalizeText(activeCategory) === normalizeText(cat.TenDM)
+                  );
+                  return (
+                    <li key={cat.MaDM}>
+                      <button
+                        className={isActive ? 'active' : ''}
+                        onClick={() => {
+                          setActiveCategory(cat.TenDM);
+                          const newParams = new URLSearchParams(searchParams);
+                          newParams.set('category', cat.TenDM);
+                          setSearchParams(newParams);
+                        }}
+                      >
+                        {cat.TenDM}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </aside>

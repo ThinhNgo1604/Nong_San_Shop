@@ -113,7 +113,10 @@ const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, ava
     await pool
         .request()
         .input("MaTK", sql.Int, maTK)
+        .input("HoTen", sql.NVarChar, hoTen || null)
         .input("SoDienThoai", sql.VarChar, soDienThoai || null)
+        .input("GioiTinh", sql.NVarChar, gioiTinh || null)
+        .input("NgaySinh", sql.Date, ngaySinh || null)
         .input("HinhAnh", sql.NVarChar, avatarUrl || null)
         .query(`
             UPDATE TaiKhoan
@@ -127,12 +130,14 @@ const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, ava
         .request()
         .input("MaTK", sql.Int, maTK)
         .input("HoTen", sql.NVarChar, hoTen || null)
+        .input("SoDienThoai", sql.VarChar, soDienThoai || null)
         .input("GioiTinh", sql.NVarChar, gioiTinh || null)
         .input("NgaySinh", sql.Date, ngaySinh || null)
         .input("HinhAnh", sql.NVarChar, avatarUrl || null)
         .query(`
             UPDATE KhachHang
             SET HoTen = ISNULL(@HoTen, HoTen),
+                SoDienThoai = ISNULL(@SoDienThoai, SoDienThoai),
                 GioiTinh = ISNULL(@GioiTinh, GioiTinh),
                 NgaySinh = ISNULL(@NgaySinh, NgaySinh),
                 HinhAnh = ISNULL(@HinhAnh, HinhAnh)

@@ -4,7 +4,9 @@ import { API_BASE } from "../../../utils/api";
 
 function DonHang() {
 
-    const { orders, fetchOrders } = useOutletContext();
+    const outletCtx = useOutletContext() || {};
+    const orders = outletCtx.orders || [];
+    const fetchOrders = outletCtx.fetchOrders;
 
     const [filter, setFilter] = useState("all");
 
@@ -31,6 +33,7 @@ function DonHang() {
                     },
                     body: JSON.stringify({
                         TrangThaiDonHang: "Đã hủy",
+                        isUserCancel: true
                     }),
                 }
             );
@@ -179,10 +182,11 @@ function DonHang() {
 
                                 {currentOrders.map((o) => {
                                     const orderStatus = o.TrangThaiDonHang || o.TrangThai || "Chờ xác nhận";
+                                    const paymentStatus = o.TrangThaiThanhToan || "Chưa thanh toán";
+                                    // Đơn hàng đã được xác nhận hoặc đã thanh toán thì không thể hủy
                                     const canCancel =
-                                        orderStatus !== "Đang giao" &&
-                                        orderStatus !== "Đã giao" &&
-                                        orderStatus !== "Đã hủy";
+                                        orderStatus === "Chờ xác nhận" &&
+                                        paymentStatus !== "Đã thanh toán";
                                     const orderId = o.MaDH || o.maDH || o.id;
 
                                     return (

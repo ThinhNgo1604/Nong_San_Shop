@@ -56,6 +56,15 @@ const updateStatus = async (req, res) => {
         };
 
         // 3. Kiểm tra tính hợp lệ của thao tác chuyển đổi
+        if (newStatus === "Đã hủy") {
+            const currentPayment = currentOrder.TrangThaiThanhToan || "Chưa thanh toán";
+            if (currentStatus !== "Chờ xác nhận" || currentPayment === "Đã thanh toán") {
+                return res.status(400).json({ 
+                    message: "Đơn hàng đã được xác nhận hoặc đã thanh toán, không thể hủy!" 
+                });
+            }
+        }
+
         const validOptions = allowedTransitions[currentStatus] || ["Chờ xác nhận", "Đã xác nhận", "Đang giao", "Đã giao", "Đã hủy"];
         
         if (newStatus && !validOptions.includes(newStatus)) {

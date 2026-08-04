@@ -25,10 +25,11 @@ function Profile() {
 
     const fetchOrders = () => {
         const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (storedUser) {
-            fetch(`${API_BASE}/api/orders/user/${storedUser.maTK}`)
+        const maTK = storedUser ? (storedUser.maTK || storedUser.MaTK || storedUser.MaKH || storedUser.maKH) : null;
+        if (maTK) {
+            fetch(`${API_BASE}/api/orders/user/${maTK}`)
                 .then(res => res.json())
-                .then(data => setOrders(data))
+                .then(data => setOrders(Array.isArray(data) ? data : []))
                 .catch(err => console.log(err));
         }
     };

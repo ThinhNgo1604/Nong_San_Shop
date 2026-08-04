@@ -868,20 +868,85 @@ function createMockPool() {
                     // --- DONHANG UPDATE / SELECT ---
 
                     // --- SODIACHI CRUD ---
-                    if (q.includes("INSERT INTO SODIACHI")) {
+                    if (q.includes("DELETE FROM SODIACHI") || q.includes("DELETE FROM DIACHI") || q.startsWith("DELETE")) {
+                        const targetMaDC = Number(inputs.MaDC || inputs.maDC);
+                        if (targetMaDC) {
+                            const index = (mockStore.DiaChi || []).findIndex(d => Number(d.MaDC) === targetMaDC);
+                            if (index !== -1) {
+                                const deleted = mockStore.DiaChi.splice(index, 1)[0];
+                                deleteDocFromFirebase("DiaChi", deleted.MaDC);
+                            }
+                        }
+                        return { recordset: [] };
+                    }
+
+                    if (q.includes("INSERT INTO SODIACHI") || q.includes("INSERT INTO DIACHI")) {
                         const maxMaDC = (mockStore.DiaChi || []).reduce((max, d) => Math.max(max, Number(d.MaDC) || 0), 0);
+                        const maTK = Number(inputs.MaTK || inputs.MaKH || 2);
+                        const kh = (mockStore.KhachHang || []).find(k => Number(k.MaTK) === maTK || Number(k.MaKH) === maTK);
                         const newDC = {
                             MaDC: maxMaDC + 1,
-                            MaKH: Number(inputs.MaKH) || 2,
+                            MaKH: kh ? Number(kh.MaKH) : maTK,
+                            MaTK: kh ? Number(kh.MaTK) : maTK,
                             HoTen: inputs.HoTen || "Khách Hàng",
                             SoDienThoai: inputs.SoDienThoai || "0987654321",
                             DiaChiChiTiet: inputs.DiaChiChiTiet || inputs.DiaChi || "",
                             MacDinh: inputs.MacDinh ? 1 : 0
                         };
                         if (!mockStore.DiaChi) mockStore.DiaChi = [];
-                        mockStore.DiaChi.push(newDC);
+                        mockStore.DiaChi.unshift(newDC);
                         syncDocToFirebase("DiaChi", newDC);
                         return { recordset: [{ MaDC: newDC.MaDC, maDC: newDC.MaDC }] };
+                    }
+
+                    if (q.includes("UPDATE SODIACHI") || q.includes("UPDATE DIACHI")) {
+                        if (inputs.MaDC) {
+                            const targetMaDC = Number(inputs.MaDC);
+                            const dc = (mockStore.DiaChi || []).find(d => Number(d.MaDC) === targetMaDC);
+                            if (dc) {
+                                if (inputs.HoTen !== undefined) dc.HoTen = inputs.HoTen;
+                                if (inputs.SoDienThoai !== undefined) dc.SoDienThoai = inputs.SoDienThoai;
+                                if (inputs.DiaChiChiTiet !== undefined) dc.DiaChiChiTiet = inputs.DiaChiChiTiet;
+                                if (inputs.MacDinh !== undefined) dc.MacDinh = inputs.MacDinh ? 1 : 0;
+                                else if (q.includes("MACDINH = 1")) dc.MacDinh = 1;
+                                else if (q.includes("MACDINH = 0")) dc.MacDinh = 0;
+                                syncDocToFirebase("DiaChi", dc);
+                            }
+                        } else if (inputs.MaKH || inputs.MaTK) {
+                            const maTK = Number(inputs.MaTK || inputs.MaKH);
+                            const kh = (mockStore.KhachHang || []).find(k => Number(k.MaTK) === maTK || Number(k.MaKH) === maTK);
+                            const realMaKH = kh ? Number(kh.MaKH) : maTK;
+                            const realMaTK = kh ? Number(kh.MaTK) : maTK;
+                            (mockStore.DiaChi || []).forEach(d => {
+                                if (Number(d.MaKH) === realMaKH || Number(d.MaTK) === realMaTK || Number(d.MaKH) === maTK) {
+                                    if (inputs.MacDinh !== undefined) {
+                                        d.MacDinh = inputs.MacDinh ? 1 : 0;
+                                    } else if (q.includes("MACDINH = 0")) {
+                                        d.MacDinh = 0;
+                                    } else if (q.includes("MACDINH = 1")) {
+                                        d.MacDinh = 1;
+                                    }
+                                    syncDocToFirebase("DiaChi", d);
+                                }
+                            });
+                        }
+                        return { recordset: [] };
+                    }
+
+                    if (q.includes("FROM SODIACHI") || q.includes("FROM DIACHI")) {
+                        let list = [...(mockStore.DiaChi || [])];
+                        if (inputs.MaKH || inputs.MaTK) {
+                            const maTK = Number(inputs.MaTK || inputs.MaKH);
+                            const kh = (mockStore.KhachHang || []).find(k => Number(k.MaTK) === maTK || Number(k.MaKH) === maTK);
+                            const realMaKH = kh ? Number(kh.MaKH) : maTK;
+                            const realMaTK = kh ? Number(kh.MaTK) : maTK;
+                            list = list.filter(d => Number(d.MaKH) === realMaKH || Number(d.MaTK) === realMaTK || Number(d.MaKH) === maTK);
+                        }
+                        list.sort((a, b) => {
+                            if (b.MacDinh !== a.MacDinh) return (b.MacDinh ? 1 : 0) - (a.MacDinh ? 1 : 0);
+                            return Number(b.MaDC) - Number(a.MaDC);
+                        });
+                        return { recordset: list };
                     }
 
                     if (q.includes("UPDATE DONHANG")) {

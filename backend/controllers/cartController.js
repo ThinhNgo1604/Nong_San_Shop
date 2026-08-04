@@ -260,17 +260,18 @@ const addToCart = async (req, res) => {
       .query('SELECT MaKH FROM KhachHang WHERE MaTK = @MaTK');
 
     if (khResult.recordset.length === 0) {
-        return res.status(400).json({ message: "Tài khoản chưa được liên kết với khách hàng" });
+        return res.status(200).json({ message: "Sản phẩm được lưu giỏ hàng local" });
     }
     const realMaKH = khResult.recordset[0].MaKH;
 
-    // 2. Thao tác với Redis thay vì SQL
+    // 2. Thao tác với Redis
     const redisKey = `cart:${realMaKH}`;
     let cartData = await redisClient.get(redisKey);
     let cart = cartData ? JSON.parse(cartData) : [];
 
     // Kiểm tra sản phẩm đã có trong giỏ chưa
-    const existingItemIndex = cart.findIndex(item => item.maSP === Number(maSP));
+    const targetSP = Number(maSP);
+    const existingItemIndex = cart.findIndex(item => Number(item.maSP) === targetSP);
     
     if (existingItemIndex !== -1) {
         // Cập nhật số lượng
@@ -278,13 +279,13 @@ const addToCart = async (req, res) => {
         if (cart[existingItemIndex].soLuong <= 0) cart[existingItemIndex].soLuong = 1;
     } else {
         // Thêm mới
-        cart.push({ maSP: Number(maSP), soLuong: Number(soLuong) || 1 });
+        cart.push({ maSP: targetSP, soLuong: Number(soLuong) || 1 });
     }
 
-    // 3. Lưu lại vào Redis và set thời gian tự hủy (TTL) là 3 ngày (259200 giây)
+    // 3. Lưu lại vào Redis
     await redisClient.setEx(redisKey, 259200, JSON.stringify(cart));
 
-    res.status(200).json({ message: "Đã thêm vào giỏ hàng (Redis)" });
+    res.status(200).json({ message: "Đã thêm vào giỏ hàng" });
   } catch (error) {
     console.error("Lỗi khi thêm vào giỏ hàng Redis:", error);
     res.status(500).json({ message: "Lỗi server" });
@@ -296,7 +297,7 @@ const mergeCart = async (req, res) => {
   try {
     const { maKH: maTK, localCart } = req.body;
     
-    if (!localCart || localCart.length === 0) {
+    if (!localCart || !Array.isArray(localCart) || localCart.length === 0) {
       return res.status(200).json({ message: "Không có giỏ hàng tạm để đồng bộ" });
     }
 
@@ -318,12 +319,13 @@ const mergeCart = async (req, res) => {
     // Gộp từng sản phẩm từ localCart vào cart trên Redis
     for (let localItem of localCart) {
       const realSP = Number(localItem.maSP || localItem.id); 
+      if (!realSP) continue;
       const qty = Number(localItem.quantity) || 1;
 
-      const existingItemIndex = cart.findIndex(item => item.maSP === realSP);
+      const existingItemIndex = cart.findIndex(item => Number(item.maSP) === realSP);
       
       if (existingItemIndex !== -1) {
-          cart[existingItemIndex].soLuong += qty;
+          cart[existingItemIndex].soLuong = Math.max(Number(cart[existingItemIndex].soLuong) || 1, qty);
       } else {
           cart.push({ maSP: realSP, soLuong: qty });
       }

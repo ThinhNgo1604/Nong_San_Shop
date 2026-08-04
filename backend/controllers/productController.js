@@ -141,11 +141,14 @@ const createProduct = async (req, res) => {
 
     try {
 
+        let imagePath = (req.body.HinhAnh && req.body.HinhAnh !== "") ? req.body.HinhAnh : null;
+        if (!imagePath && req.file) {
+            imagePath = req.file.filename || (req.file.buffer ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null);
+        }
+
         const product = {
             ...req.body,
-            HinhAnh: (req.body.HinhAnh && req.body.HinhAnh !== "")
-                ? req.body.HinhAnh
-                : (req.file ? req.file.filename : null)
+            HinhAnh: imagePath
         };
 
         // Validate dữ liệu
@@ -210,11 +213,14 @@ const updateProduct = async (req, res) => {
 
         const id = req.params.id;
 
+        let imagePath = (req.body.HinhAnh && req.body.HinhAnh !== "") ? req.body.HinhAnh : null;
+        if (!imagePath && req.file) {
+            imagePath = req.file.filename || (req.file.buffer ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null);
+        }
+
         const product = {
             ...req.body,
-            HinhAnh: (req.body.HinhAnh && req.body.HinhAnh !== "")
-                ? req.body.HinhAnh
-                : (req.file ? req.file.filename : req.body.HinhAnh)
+            HinhAnh: imagePath || req.body.HinhAnh
         };
 
         // Validate

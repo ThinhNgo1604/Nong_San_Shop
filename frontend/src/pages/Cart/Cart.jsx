@@ -30,6 +30,7 @@ const Cart = () => {
     let localCart = [];
     try {
       localCart = JSON.parse(localStorage.getItem('cart') || '[]');
+      if (!Array.isArray(localCart)) localCart = [];
     } catch (e) {
       localCart = [];
     }
@@ -38,30 +39,54 @@ const Cart = () => {
       fetch(`${API_BASE}/api/cart/${storedUser.maTK || storedUser.MaTK}`)
         .then((res) => res.json())
         .then((data) => {
-          let formattedData = Array.isArray(data) ? data.map(item => ({
+          let serverCart = Array.isArray(data) ? data.map(item => ({
             ...item,
             id: Number(item.id || item.maSP),
             maSP: Number(item.maSP || item.id),
             quantity: Number(item.quantity) || 1
           })) : [];
 
-          if (formattedData.length > 0) {
-            setCartItems(formattedData);
-            localStorage.setItem('cart', JSON.stringify(formattedData));
-            window.dispatchEvent(new Event('cartUpdated'));
-          } else if (localCart.length > 0) {
-            setCartItems(localCart);
+          // Gộp giỏ hàng Server và LocalStorage để không làm mất sản phẩm nào
+          const mergedCartMap = new Map();
+
+          // 1. Nạp sản phẩm từ Server
+          serverCart.forEach(item => {
+            const id = Number(item.id || item.maSP);
+            if (id) mergedCartMap.set(id, item);
+          });
+
+          // 2. Gộp sản phẩm từ Local (giữ lại các sản phẩm local chưa có trên server hoặc cập nhật số lượng)
+          let needsServerSync = false;
+          localCart.forEach(localItem => {
+            const id = Number(localItem.id || localItem.maSP);
+            if (!id) return;
+            if (mergedCartMap.has(id)) {
+              const existing = mergedCartMap.get(id);
+              const maxQty = Math.max(Number(existing.quantity) || 1, Number(localItem.quantity) || 1);
+              mergedCartMap.set(id, { ...existing, quantity: maxQty });
+            } else {
+              mergedCartMap.set(id, localItem);
+              needsServerSync = true;
+            }
+          });
+
+          const mergedCart = Array.from(mergedCartMap.values());
+
+          setCartItems(mergedCart);
+          localStorage.setItem('cart', JSON.stringify(mergedCart));
+          window.dispatchEvent(new Event('cartUpdated'));
+
+          if (needsServerSync && mergedCart.length > 0) {
             fetch(`${API_BASE}/api/cart/merge`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 maKH: storedUser.maTK || storedUser.MaTK,
-                localCart: localCart
+                localCart: mergedCart
               })
-            }).catch(err => console.error("Lỗi tự động khôi phục giỏ hàng server:", err));
-          } else {
-            setCartItems([]);
+            }).catch(err => console.error("Lỗi đồng bộ giỏ hàng server:", err));
           }
+
           setIsLoading(false);
         })
         .catch((err) => { 

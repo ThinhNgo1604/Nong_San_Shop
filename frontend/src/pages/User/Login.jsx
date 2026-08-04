@@ -74,7 +74,6 @@ function Login() {
                         localCart: localCart
                     })
                 })
-                    .then(() => localStorage.removeItem('cart'))
                     .catch((err) => console.error("Lỗi đồng bộ giỏ hàng:", err));
             }
 

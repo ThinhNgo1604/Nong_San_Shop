@@ -64,7 +64,7 @@ function VoucherTable({
 
                     return (
 
-                        <tr key={voucher.MaGG}>
+                        <tr key={voucher.MaGG || voucher.MaVoucher}>
 
                             <td>{voucher.Code}</td>
 
@@ -102,7 +102,6 @@ function VoucherTable({
 
                                 <button
                                     className="btn btn-warning btn-sm me-2"
-                                    disabled={status.text === "Đã hết hạn"}
                                     onClick={() => onEdit(voucher)}
                                 >
                                     Sửa
@@ -110,7 +109,7 @@ function VoucherTable({
 
                                 <button
                                     className="btn btn-danger btn-sm"
-                                    onClick={() => onDelete(voucher.MaGG)}
+                                    onClick={() => onDelete(voucher.MaGG || voucher.MaVoucher)}
                                 >
                                     Xóa
                                 </button>

@@ -35,19 +35,59 @@ export const storage = getStorage(app);
 
 export async function uploadImageToFirebase(file) {
   if (!file) return null;
+
+  const fileToDataURL = (fileToConvert) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          resolve(dataUrl);
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(fileToConvert);
+    });
+  };
+
   try {
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const storageRef = ref(storage, `products/${Date.now()}_${cleanFileName}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
-  } catch (error) {
-    console.warn("Firebase Storage upload encountered issue, fallback to Data URL:", error);
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(file);
+
+    const uploadPromise = uploadBytes(storageRef, file).then(async (snapshot) => {
+      return await getDownloadURL(snapshot.ref);
     });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Firebase Storage timeout")), 1800)
+    );
+
+    const downloadURL = await Promise.race([uploadPromise, timeoutPromise]);
+    if (downloadURL) return downloadURL;
+    return await fileToDataURL(file);
+  } catch (error) {
+    console.warn("Firebase Storage upload issue, fallback to Data URL:", error);
+    return await fileToDataURL(file);
   }
 }
 

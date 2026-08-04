@@ -502,7 +502,7 @@ function createMockPool() {
                                 DieuKienApDung: Number(inputs.DieuKienApDung) || 100000,
                                 GiaTriToiThieu: Number(inputs.DieuKienApDung) || 100000,
                                 SoLuong: Number(inputs.SoLuong) || 50,
-                                SoDiemDoi: inputs.SoDiemDoi ? Number(inputs.SoDiemDoi) : 50,
+                                SoDiemDoi: (inputs.SoDiemDoi !== undefined && inputs.SoDiemDoi !== null && inputs.SoDiemDoi !== "") ? Number(inputs.SoDiemDoi) : null,
                                 TrangThai: true
                             };
                             if (!mockStore.Voucher) mockStore.Voucher = [];
@@ -521,8 +521,25 @@ function createMockPool() {
                             } else if (inputs.MaGG) {
                                 const index = (mockStore.Voucher || []).findIndex(x => Number(x.MaGG || x.MaVoucher) === Number(inputs.MaGG));
                                 if (index !== -1) {
-                                    mockStore.Voucher[index] = { ...mockStore.Voucher[index], ...inputs };
-                                    syncDocToFirebase("Voucher", mockStore.Voucher[index]);
+                                    const current = mockStore.Voucher[index];
+                                    const updated = {
+                                        ...current,
+                                        Code: inputs.Code || current.Code,
+                                        MaCode: inputs.Code || current.MaCode,
+                                        TenVoucher: inputs.Code || current.TenVoucher,
+                                        LoaiGiam: inputs.LoaiGiam || current.LoaiGiam,
+                                        GiaTriGiam: (inputs.GiaTriGiam !== undefined && inputs.GiaTriGiam !== null && inputs.GiaTriGiam !== "") ? Number(inputs.GiaTriGiam) : current.GiaTriGiam,
+                                        PhanTramGiam: (inputs.GiaTriGiam !== undefined && inputs.GiaTriGiam !== null && inputs.GiaTriGiam !== "") ? Number(inputs.GiaTriGiam) : current.PhanTramGiam,
+                                        GiamToiDa: (inputs.GiaTriGiam !== undefined && inputs.GiaTriGiam !== null && inputs.GiaTriGiam !== "") ? Number(inputs.GiaTriGiam) : current.GiamToiDa,
+                                        NgayBD: inputs.NgayBD || current.NgayBD,
+                                        NgayKT: inputs.NgayKT || current.NgayKT,
+                                        DieuKienApDung: (inputs.DieuKienApDung !== undefined && inputs.DieuKienApDung !== null && inputs.DieuKienApDung !== "") ? Number(inputs.DieuKienApDung) : current.DieuKienApDung,
+                                        GiaTriToiThieu: (inputs.DieuKienApDung !== undefined && inputs.DieuKienApDung !== null && inputs.DieuKienApDung !== "") ? Number(inputs.DieuKienApDung) : current.GiaTriToiThieu,
+                                        SoLuong: (inputs.SoLuong !== undefined && inputs.SoLuong !== null && inputs.SoLuong !== "") ? Number(inputs.SoLuong) : current.SoLuong,
+                                        SoDiemDoi: (inputs.SoDiemDoi !== undefined && inputs.SoDiemDoi !== null && inputs.SoDiemDoi !== "") ? Number(inputs.SoDiemDoi) : null
+                                    };
+                                    mockStore.Voucher[index] = updated;
+                                    syncDocToFirebase("Voucher", updated);
                                 }
                             }
                             return { recordset: [] };
@@ -552,7 +569,7 @@ function createMockPool() {
                             DieuKienApDung: Number(v.DieuKienApDung || v.GiaTriToiThieu || 100000),
                             GiaTriToiThieu: Number(v.GiaTriToiThieu || v.DieuKienApDung || 100000),
                             SoLuong: Number(v.SoLuong || 0),
-                            SoDiemDoi: v.SoDiemDoi !== undefined && v.SoDiemDoi !== null ? Number(v.SoDiemDoi) : 50,
+                            SoDiemDoi: (v.SoDiemDoi !== undefined && v.SoDiemDoi !== null && v.SoDiemDoi !== "") ? Number(v.SoDiemDoi) : null,
                             TrangThai: v.TrangThai !== undefined ? v.TrangThai : true
                         }));
 
@@ -565,8 +582,13 @@ function createMockPool() {
                         if (q.includes("SODIEMDOI IS NOT NULL")) {
                             list = list.filter(v => v.SoDiemDoi !== null && v.SoDiemDoi !== undefined);
                         }
+                        if (q.includes("MAGG <>") || q.includes("MAGG<>")) {
+                            if (inputs.MaGG) {
+                                list = list.filter(v => Number(v.MaGG || v.MaVoucher) !== Number(inputs.MaGG));
+                            }
+                        }
                         if (inputs.Code) {
-                            list = list.filter(v => String(v.Code).toLowerCase() === String(inputs.Code).toLowerCase());
+                            list = list.filter(v => String(v.Code).toLowerCase().trim() === String(inputs.Code).toLowerCase().trim());
                         }
 
                         return { recordset: list };

@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node backend/server.js & vite --host --port 3000",
+    "dev": "node backend/server.js",
     "build": "vite build",
+    "start": "node backend/server.js",
     "lint": "node -e \"console.log('No lint issues')\"",
     "preview": "vite preview"
   },

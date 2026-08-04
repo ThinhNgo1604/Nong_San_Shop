@@ -41,81 +41,85 @@ function Voucher() {
     // ===========================
     // THÊM
     // ===========================
-const handleAdd = async (data) => {
+    const handleAdd = async (data) => {
 
-    const isExist = vouchers.some(v =>
-        v.Code.trim().toUpperCase() ===
-        data.Code.trim().toUpperCase()
-    );
+        const isExist = vouchers.some(v =>
+            (v.Code || "").trim().toUpperCase() ===
+            (data.Code || "").trim().toUpperCase()
+        );
 
-    if (isExist) {
+        if (isExist) {
+            alert("Mã giảm giá đã tồn tại.");
+            return {
+                codeError: "Mã giảm giá đã tồn tại."
+            };
+        }
 
-        return {
-            codeError: "Mã giảm giá đã tồn tại."
-        };
+        try {
 
-    }
+            await createVoucher(data);
 
-    try {
+            alert("Thêm mã giảm giá thành công");
 
-        await createVoucher(data);
+            fetchVouchers();
 
-        alert("Thêm mã giảm giá thành công");
+            return {
+                success: true
+            };
 
-        fetchVouchers();
+        } catch (error) {
 
-        return {
-            success: true
-        };
+            console.log(error);
+            const msg = error.response?.data?.message || "Không thể thêm mã giảm giá.";
+            alert(msg);
+            return { codeError: msg };
 
-    } catch (error) {
+        }
 
-        console.log(error);
-
-    }
-
-};
+    };
 
     // ===========================
     // CẬP NHẬT
     // ===========================
-const handleUpdate = async (id, data) => {
+    const handleUpdate = async (id, data) => {
 
-    const isExist = vouchers.some(v =>
-        v.MaGG !== id &&
-        v.Code.trim().toUpperCase() ===
-        data.Code.trim().toUpperCase()
-    );
+        const isExist = vouchers.some(v =>
+            Number(v.MaGG || v.MaVoucher) !== Number(id) &&
+            (v.Code || "").trim().toUpperCase() ===
+            (data.Code || "").trim().toUpperCase()
+        );
 
-    if (isExist) {
+        if (isExist) {
+            alert("Mã giảm giá đã tồn tại.");
+            return {
+                codeError: "Mã giảm giá đã tồn tại."
+            };
+        }
 
-        return {
-            codeError: "Mã giảm giá đã tồn tại."
-        };
+        try {
 
-    }
+            await updateVoucher(id, data);
 
-    try {
+            alert("Cập nhật thành công");
 
-        await updateVoucher(id, data);
+            fetchVouchers();
 
-        alert("Cập nhật thành công");
+            setEditingVoucher(null);
 
-        fetchVouchers();
+            return {
+                success: true
+            };
 
-        setEditingVoucher(null);
+        } catch (error) {
 
-        return {
-            success: true
-        };
+            console.log(error);
+            const msg = error.response?.data?.message || "Không thể cập nhật mã giảm giá.";
+            alert(msg);
+            return { codeError: msg };
 
-    } catch (error) {
+        }
 
-        console.log(error);
-
-    }
-
-};
+    };
 
     // ===========================
     // XÓA

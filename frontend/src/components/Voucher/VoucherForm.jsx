@@ -25,7 +25,13 @@ function VoucherForm({
         if (editingVoucher) {
 
             setFormData({
-                ...editingVoucher,
+                Code: editingVoucher.Code || editingVoucher.MaCode || "",
+                LoaiGiam: editingVoucher.LoaiGiam || "Phần trăm",
+                GiaTriGiam: editingVoucher.GiaTriGiam ?? "",
+                NgayBD: editingVoucher.NgayBD ? String(editingVoucher.NgayBD).slice(0, 10) : "",
+                NgayKT: editingVoucher.NgayKT ? String(editingVoucher.NgayKT).slice(0, 10) : "",
+                DieuKienApDung: editingVoucher.DieuKienApDung ?? "",
+                SoLuong: editingVoucher.SoLuong ?? "",
                 SoDiemDoi: editingVoucher.SoDiemDoi ?? ""
             });
 
@@ -195,7 +201,7 @@ function VoucherForm({
 
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
 
         e.preventDefault();
 
@@ -203,12 +209,19 @@ function VoucherForm({
 
         if (editingVoucher) {
 
-            onUpdate(editingVoucher.MaGG, formData);
+            const id = editingVoucher.MaGG || editingVoucher.MaVoucher;
+            const res = await onUpdate(id, formData);
+            if (res?.codeError) {
+                setErrors(prev => ({ ...prev, Code: res.codeError }));
+            }
 
         }
         else {
 
-            onAdd(formData);
+            const res = await onAdd(formData);
+            if (res?.codeError) {
+                setErrors(prev => ({ ...prev, Code: res.codeError }));
+            }
 
         }
 

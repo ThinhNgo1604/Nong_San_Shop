@@ -269,7 +269,15 @@ const validate = () => {
             await onAdd(data);
             resetForm();
         } catch (err) {
-            console.error(err);
+            console.error("Error saving product:", err);
+            if (err?.response?.data?.message) {
+                const msg = err.response.data.message;
+                if (msg.includes("Tên sản phẩm")) {
+                    setErrors(prev => ({ ...prev, TenSP: msg }));
+                } else if (msg.includes("Danh mục")) {
+                    setErrors(prev => ({ ...prev, MaDM: msg }));
+                }
+            }
         } finally {
             setUploading(false);
         }

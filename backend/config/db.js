@@ -85,7 +85,8 @@ const mockStore = {
         { MaDH: 106, MaSP: 2, TenSP: "Cam Sành Tiền Giang", SoLuong: 3, DonGia: 38000, ThanhTien: 114000 }
     ],
     ThongBao: [
-        { MaTB: 1, MaKH: 2, TieuDe: "Đơn hàng đã được giao thành công", NoiDung: "Đơn hàng #101 của bạn đã giao hoàn tất. Cảm ơn bạn đã mua hàng tại Nông Sản Shop!", DaDoc: false, NgayTao: new Date().toISOString() }
+        { MaTB: 1, MaTK: 2, MaKH: 2, Loai: "order", TieuDe: "Đơn hàng đã được giao thành công", NoiDung: "Đơn hàng #101 của bạn đã giao hoàn tất. Cảm ơn bạn đã mua hàng tại Nông Sản Shop!", DaDoc: false, NgayTao: new Date().toISOString() },
+        { MaTB: 2, MaTK: 3, MaKH: 3, Loai: "order", TieuDe: "Đã xác nhận đơn hàng thành công ✅", NoiDung: "Đơn hàng #106 của bạn đã được Admin duyệt thành công và đang được chuẩn bị.", DaDoc: false, NgayTao: new Date().toISOString() }
     ],
     DanhGia: [
         { MaDG: 1, MaKH: 2, MaSP: 1, SoSao: 5, NoiDung: "Táo rất tươi ngon, giòn ngọt, đóng gói cẩn thận!", NgayDG: new Date(Date.now() - 86400000 * 2).toISOString() },
@@ -1293,7 +1294,7 @@ function createMockPool() {
                         return { recordset: [] };
                     }
 
-                    // --- SELECT, INSERT & UPDATE THONGBAO ---
+                    // --- SELECT, INSERT, UPDATE & DELETE THONGBAO ---
                     if (q.includes("INSERT INTO THONGBAO")) {
                         const maxMaTB = (mockStore.ThongBao || []).reduce((max, t) => Math.max(max, Number(t.MaTB) || 0), 0);
                         const newMaTB = maxMaTB + 1;
@@ -1316,19 +1317,37 @@ function createMockPool() {
 
                     if (q.includes("FROM THONGBAO")) {
                         let list = [...(mockStore.ThongBao || [])];
-                        if (inputs.MaTK) list = list.filter(t => Number(t.MaTK) === Number(inputs.MaTK) || Number(t.MaKH) === Number(inputs.MaTK));
-                        if (inputs.MaKH) list = list.filter(t => Number(t.MaKH) === Number(inputs.MaKH));
+                        if (inputs.MaTK !== undefined && inputs.MaTK !== null) {
+                            list = list.filter(t => Number(t.MaTK) === Number(inputs.MaTK) || Number(t.MaKH) === Number(inputs.MaTK));
+                        }
+                        if (inputs.MaKH !== undefined && inputs.MaKH !== null) {
+                            list = list.filter(t => Number(t.MaKH) === Number(inputs.MaKH));
+                        }
                         list.sort((a, b) => new Date(b.NgayTao || 0) - new Date(a.NgayTao || 0));
                         return { recordset: list };
                     }
 
                     if (q.includes("UPDATE THONGBAO")) {
                         (mockStore.ThongBao || []).forEach(t => {
-                            if (!inputs.MaTK || Number(t.MaTK) === Number(inputs.MaTK) || Number(t.MaKH) === Number(inputs.MaTK)) {
+                            if (inputs.MaTB && Number(t.MaTB) === Number(inputs.MaTB)) {
                                 t.DaDoc = true;
                                 syncDocToFirebase("ThongBao", t);
+                            } else if (!inputs.MaTB) {
+                                if (inputs.MaTK === undefined || inputs.MaTK === null || Number(t.MaTK) === Number(inputs.MaTK) || Number(t.MaKH) === Number(inputs.MaTK)) {
+                                    t.DaDoc = true;
+                                    syncDocToFirebase("ThongBao", t);
+                                }
                             }
                         });
+                        return { recordset: [] };
+                    }
+
+                    if (q.includes("DELETE FROM THONGBAO")) {
+                        if (inputs.MaTB) {
+                            mockStore.ThongBao = (mockStore.ThongBao || []).filter(t => Number(t.MaTB) !== Number(inputs.MaTB));
+                        } else if (inputs.MaTK !== undefined && inputs.MaTK !== null) {
+                            mockStore.ThongBao = (mockStore.ThongBao || []).filter(t => Number(t.MaTK) !== Number(inputs.MaTK) && Number(t.MaKH) !== Number(inputs.MaTK));
+                        }
                         return { recordset: [] };
                     }
 

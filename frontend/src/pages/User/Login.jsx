@@ -62,6 +62,7 @@ function Login() {
 
             localStorage.setItem("token", data.token);
             localStorage.setItem("user", JSON.stringify(data.user));
+            window.dispatchEvent(new Event("userUpdated"));
 
             // ĐỒNG BỘ GIỎ HÀNG (Chạy ngầm)
             const localCart = JSON.parse(localStorage.getItem('cart') || '[]');

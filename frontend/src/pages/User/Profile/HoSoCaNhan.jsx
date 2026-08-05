@@ -20,21 +20,56 @@ function HoSoCaNhan() {
     const [saveMessage, setSaveMessage] = useState("");
 
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem('user'));
-        if (storedUser) {
-            setFormData((prev) => ({
-                ...prev,
-                hoTen: storedUser.HoTen || "",
-                soDienThoai: storedUser.SoDienThoai || "",
-                email: storedUser.email || "",
-                gioiTinh: storedUser.GioiTinh || "nam",
-                ngaySinh: storedUser.NgaySinh || "",
-            }));
-            if (storedUser.avatarUrl || storedUser.HinhAnh) {
-                setAvatarUrl(storedUser.avatarUrl || storedUser.HinhAnh);
+        const loadProfileData = async () => {
+            const storedUser = JSON.parse(localStorage.getItem('user'));
+            if (storedUser) {
+                setFormData((prev) => ({
+                    ...prev,
+                    hoTen: storedUser.HoTen || "",
+                    soDienThoai: storedUser.SoDienThoai || "",
+                    email: storedUser.email || storedUser.Email || "",
+                    gioiTinh: storedUser.GioiTinh || "nam",
+                    ngaySinh: storedUser.NgaySinh || "",
+                }));
+                if (storedUser.avatarUrl || storedUser.HinhAnh) {
+                    setAvatarUrl(storedUser.avatarUrl || storedUser.HinhAnh);
+                }
+                setOriginalEmail(storedUser.email || storedUser.Email || "");
             }
-            setOriginalEmail(storedUser.email || "");
-        }
+
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const res = await fetch(`${API_BASE}/api/auth/profile`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.user) {
+                            setFormData((prev) => ({
+                                ...prev,
+                                hoTen: data.user.HoTen || prev.hoTen,
+                                soDienThoai: data.user.SoDienThoai || prev.soDienThoai,
+                                email: data.user.email || data.user.Email || prev.email,
+                                gioiTinh: data.user.GioiTinh || prev.gioiTinh,
+                                ngaySinh: data.user.NgaySinh || prev.ngaySinh,
+                            }));
+                            if (data.user.avatarUrl || data.user.HinhAnh) {
+                                setAvatarUrl(data.user.avatarUrl || data.user.HinhAnh);
+                            }
+                            setOriginalEmail(data.user.email || data.user.Email || "");
+                        }
+                    }
+                } catch (err) {
+                    console.error("Lỗi lấy hồ sơ cá nhân:", err);
+                }
+            }
+        };
+
+        loadProfileData();
+
+        window.addEventListener("userUpdated", loadProfileData);
+        return () => window.removeEventListener("userUpdated", loadProfileData);
     }, []);
 
     const handleChange = (e) => {

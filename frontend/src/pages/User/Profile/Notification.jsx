@@ -5,6 +5,7 @@ function Notification() {
     const [notifications, setNotifications] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [now, setNow] = useState(new Date()); 
+    const [filterTab, setFilterTab] = useState("all"); // "all" | "unread"
 
     // --- STATE DÀNH CHO PHÂN TRANG ---
     const [currentPage, setCurrentPage] = useState(1);
@@ -14,15 +15,17 @@ function Notification() {
 
     // Lấy dữ liệu từ API & Polling tự động
     const fetchNotifs = () => {
-        if (storedUser) {
-            fetch(`${API_BASE}/api/notifications/${storedUser.maTK}`)
+        const user = JSON.parse(localStorage.getItem("user"));
+        const userId = user ? (user.maTK || user.MaTK) : null;
+        if (userId) {
+            fetch(`${API_BASE}/api/notifications/${userId}`)
                 .then(res => res.json())
                 .then(data => {
                     setNotifications(Array.isArray(data) ? data : []);
                     setIsLoading(false);
                 })
                 .catch(err => {
-                    console.error(err);
+                    console.error("Lỗi tải thông báo:", err);
                     setIsLoading(false);
                 });
         } else {
@@ -34,9 +37,11 @@ function Notification() {
         fetchNotifs();
         const interval = setInterval(fetchNotifs, 3000);
         window.addEventListener('updateNotificationCount', fetchNotifs);
+        window.addEventListener('userUpdated', fetchNotifs);
         return () => {
             clearInterval(interval);
             window.removeEventListener('updateNotificationCount', fetchNotifs);
+            window.removeEventListener('userUpdated', fetchNotifs);
         };
     }, []);
 
@@ -48,19 +53,39 @@ function Notification() {
         return () => clearInterval(timer);
     }, []);
 
-    // Hàm gọi API đánh dấu đã đọc
-    const handleMarkAllAsRead = async () => {
-        if (!storedUser) return;
+    const isNotifRead = (notif) => {
+        return notif.DaDoc === true || notif.DaDoc === 1 || notif.DaDoc === "1" || notif.DaDoc === "true";
+    };
+
+    // Hàm gọi API đánh dấu đã đọc 1 thông báo
+    const handleMarkAsRead = async (maTB) => {
         try {
-            const res = await fetch(`${API_BASE}/api/notifications/read-all/${storedUser.maTK}`, {
+            const res = await fetch(`${API_BASE}/api/notifications/read/${maTB}`, {
                 method: 'PUT'
             });
             if (res.ok) {
-                // Cập nhật giao diện bên dưới
+                const updated = notifications.map(n => n.MaTB === maTB ? { ...n, DaDoc: true } : n);
+                setNotifications(updated);
+                const unreadCount = updated.filter(n => !isNotifRead(n)).length;
+                window.dispatchEvent(new CustomEvent('updateNotificationCount', { detail: { unreadCount } }));
+            }
+        } catch (error) {
+            console.error("Lỗi đánh dấu đã đọc 1 thông báo:", error);
+        }
+    };
+
+    // Hàm gọi API đánh dấu đã đọc tất cả
+    const handleMarkAllAsRead = async () => {
+        const user = JSON.parse(localStorage.getItem("user"));
+        const userId = user ? (user.maTK || user.MaTK) : null;
+        if (!userId) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/notifications/read-all/${userId}`, {
+                method: 'PUT'
+            });
+            if (res.ok) {
                 const updated = notifications.map(notif => ({ ...notif, DaDoc: true }));
                 setNotifications(updated);
-
-                // PHÁT TÍN HIỆU TOÀN CỤC CHO HEADER XÓA CHẤM ĐỎ NGAY LẬP TỨC
                 window.dispatchEvent(new CustomEvent('updateNotificationCount', { detail: { unreadCount: 0 } }));
             }
         } catch (error) {
@@ -68,7 +93,45 @@ function Notification() {
         }
     };
 
-    // HÀM TÍNH THỜI GIAN THEO LOGIC MỚI
+    // Hàm xóa 1 thông báo
+    const handleDeleteNotif = async (maTB, e) => {
+        if (e) e.stopPropagation();
+        try {
+            const res = await fetch(`${API_BASE}/api/notifications/${maTB}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                const updated = notifications.filter(n => n.MaTB !== maTB);
+                setNotifications(updated);
+                const unreadCount = updated.filter(n => !isNotifRead(n)).length;
+                window.dispatchEvent(new CustomEvent('updateNotificationCount', { detail: { unreadCount } }));
+            }
+        } catch (error) {
+            console.error("Lỗi xóa thông báo:", error);
+        }
+    };
+
+    // Hàm xóa tất cả thông báo
+    const handleDeleteAll = async () => {
+        const user = JSON.parse(localStorage.getItem("user"));
+        const userId = user ? (user.maTK || user.MaTK) : null;
+        if (!userId) return;
+        if (!window.confirm("Bạn có chắc chắn muốn xóa tất cả thông báo?")) return;
+
+        try {
+            const res = await fetch(`${API_BASE}/api/notifications/delete-all/${userId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                setNotifications([]);
+                window.dispatchEvent(new CustomEvent('updateNotificationCount', { detail: { unreadCount: 0 } }));
+            }
+        } catch (error) {
+            console.error("Lỗi xóa tất cả thông báo:", error);
+        }
+    };
+
+    // HÀM TÍNH THỜI GIAN
     const timeAgo = (dateString) => {
         if (!dateString) return "Vừa xong";
 
@@ -118,15 +181,19 @@ function Notification() {
         }
     };
 
-    const isNotifRead = (notif) => {
-        return notif.DaDoc === true || notif.DaDoc === 1 || notif.DaDoc === "1" || notif.DaDoc === "true";
-    };
+    // Filter notifications by tab
+    const filteredNotifications = notifications.filter(n => {
+        if (filterTab === "unread") return !isNotifRead(n);
+        return true;
+    });
+
+    const unreadCount = notifications.filter(n => !isNotifRead(n)).length;
 
     // --- LOGIC XỬ LÝ DỮ LIỆU PHÂN TRANG ---
     const indexOfLastNotification = currentPage * notificationsPerPage;
     const indexOfFirstNotification = indexOfLastNotification - notificationsPerPage;
-    const currentNotifications = notifications.slice(indexOfFirstNotification, indexOfLastNotification);
-    const totalPages = Math.ceil(notifications.length / notificationsPerPage);
+    const currentNotifications = filteredNotifications.slice(indexOfFirstNotification, indexOfLastNotification);
+    const totalPages = Math.ceil(filteredNotifications.length / notificationsPerPage);
 
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -135,51 +202,85 @@ function Notification() {
 
     return (
         <div className="bg-white rounded-4 p-4 border shadow-sm">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h5 className="text-success fw-bold mb-0">Thông báo của bạn</h5>
-                <button 
-                    onClick={handleMarkAllAsRead} 
-                    className="btn btn-sm btn-outline-success"
-                    style={{ borderRadius: '20px' }}
-                    disabled={notifications.length === 0 || notifications.every(n => isNotifRead(n))}
-                >
-                    ✓ Đánh dấu đã đọc tất cả
-                </button>
+            {/* HEADER PHẦN THÔNG BÁO */}
+            <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+                <div className="d-flex align-items-center gap-3">
+                    <h5 className="text-success fw-bold mb-0">Thông báo của bạn</h5>
+                    <div className="btn-group btn-group-sm" role="group">
+                        <button 
+                            type="button" 
+                            className={`btn ${filterTab === 'all' ? 'btn-success' : 'btn-outline-success'}`}
+                            onClick={() => { setFilterTab('all'); setCurrentPage(1); }}
+                        >
+                            Tất cả ({notifications.length})
+                        </button>
+                        <button 
+                            type="button" 
+                            className={`btn ${filterTab === 'unread' ? 'btn-success' : 'btn-outline-success'}`}
+                            onClick={() => { setFilterTab('unread'); setCurrentPage(1); }}
+                        >
+                            Chưa đọc {unreadCount > 0 && <span className="badge bg-danger ms-1">{unreadCount}</span>}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="d-flex align-items-center gap-2">
+                    <button 
+                        onClick={handleMarkAllAsRead} 
+                        className="btn btn-sm btn-outline-success rounded-pill px-3"
+                        disabled={notifications.length === 0 || notifications.every(n => isNotifRead(n))}
+                        title="Đánh dấu đã đọc tất cả"
+                    >
+                        ✓ Đánh dấu đã đọc tất cả
+                    </button>
+                    <button 
+                        onClick={handleDeleteAll} 
+                        className="btn btn-sm btn-outline-danger rounded-pill px-3"
+                        disabled={notifications.length === 0}
+                        title="Xóa tất cả thông báo"
+                    >
+                        🗑️ Xóa tất cả
+                    </button>
+                </div>
             </div>
 
-            {notifications.length === 0 ? (
+            {filteredNotifications.length === 0 ? (
                 <div className="text-center p-5 text-muted">
                     <p style={{ fontSize: '40px' }}>📭</p>
-                    <p>Bạn chưa có thông báo nào.</p>
+                    <p>{filterTab === 'unread' ? 'Bạn không có thông báo chưa đọc nào.' : 'Bạn chưa có thông báo nào.'}</p>
                 </div>
             ) : (
                 <>
                     <div className="list-group list-group-flush mb-4">
                         {currentNotifications.map((notif) => {
-                            const { icon, color, bg } = getIconAndColor(notif.Loai);
+                            const { icon, bg } = getIconAndColor(notif.Loai);
                             const isRead = isNotifRead(notif);
                             return (
                                 <div 
                                     key={notif.MaTB} 
-                                    className={`list-group-item d-flex align-items-start py-3 px-3 mb-2 rounded-3 border ${isRead ? 'bg-white' : ''}`}
+                                    className={`list-group-item d-flex align-items-center py-3 px-3 mb-2 rounded-3 border ${isRead ? 'bg-white' : ''}`}
                                     style={{ 
                                         backgroundColor: isRead ? '#fff' : '#f4fbf5',
-                                        transition: 'background-color 0.3s'
+                                        transition: 'all 0.2s',
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={() => {
+                                        if (!isRead) handleMarkAsRead(notif.MaTB);
                                     }}
                                 >
                                     <div 
                                         className="d-flex justify-content-center align-items-center rounded-circle flex-shrink-0"
-                                        style={{ width: '50px', height: '50px', backgroundColor: bg, fontSize: '24px' }}
+                                        style={{ width: '48px', height: '48px', backgroundColor: bg, fontSize: '22px' }}
                                     >
                                         {icon}
                                     </div>
                                     
                                     <div className="ms-3 flex-grow-1">
                                         <div className="d-flex justify-content-between align-items-center mb-1">
-                                            <h6 className={`mb-0 ${isRead ? 'text-dark' : 'fw-bold text-success'}`}>
+                                            <h6 className={`mb-0 ${isRead ? 'text-dark fw-semibold' : 'fw-bold text-success'}`}>
                                                 {notif.TieuDe}
                                             </h6>
-                                            <small className="text-muted" style={{ fontSize: '12px' }}>
+                                            <small className="text-muted ms-2" style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
                                                 {timeAgo(notif.NgayTao)}
                                             </small>
                                         </div>
@@ -188,12 +289,24 @@ function Notification() {
                                         </p>
                                     </div>
 
-                                    {!isRead && (
-                                        <div 
-                                            className="rounded-circle bg-danger ms-2 mt-2" 
-                                            style={{ width: '8px', height: '8px' }}
-                                        ></div>
-                                    )}
+                                    <div className="d-flex align-items-center ms-3 gap-2">
+                                        {!isRead && (
+                                            <span 
+                                                className="badge bg-danger rounded-circle p-1" 
+                                                style={{ width: '8px', height: '8px' }}
+                                                title="Chưa đọc"
+                                            ></span>
+                                        )}
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-light text-muted hover-danger rounded-circle p-1 border-0"
+                                            style={{ width: '32px', height: '32px', fontSize: '16px' }}
+                                            onClick={(e) => handleDeleteNotif(notif.MaTB, e)}
+                                            title="Xóa thông báo này"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
                                 </div>
                             );
                         })}

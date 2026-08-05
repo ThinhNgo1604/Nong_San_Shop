@@ -92,9 +92,9 @@ const updateStatus = async (req, res) => {
             const userResult = await pool.request()
                 .input('MaDH', sql.Int, orderId)
                 .query(`
-                    SELECT kh.MaTK 
+                    SELECT COALESCE(kh.MaTK, dh.MaKH) AS MaTK 
                     FROM DonHang dh
-                    JOIN KhachHang kh ON dh.MaKH = kh.MaKH
+                    LEFT JOIN KhachHang kh ON dh.MaKH = kh.MaKH OR dh.MaKH = kh.MaTK
                     WHERE dh.MaDH = @MaDH
                 `);
 
@@ -104,7 +104,9 @@ const updateStatus = async (req, res) => {
                     let title = "";
                     let content = "";
 
-                    if (newStatus === "Đã hủy" && currentStatus !== "Đã hủy") {
+                    const targetStatus = finalStatus || newStatus;
+
+                    if (targetStatus === "Đã hủy" && currentStatus !== "Đã hủy") {
                         if (req.body && req.body.isUserCancel) {
                             title = "Hủy đơn hàng thành công ❌";
                             content = `Bạn đã hủy thành công đơn hàng #${orderId}.`;
@@ -112,13 +114,13 @@ const updateStatus = async (req, res) => {
                             title = "Duyệt đơn không thành công ❌";
                             content = `Đơn hàng #${orderId} của bạn đã bị hủy / từ chối duyệt bởi Admin.`;
                         }
-                    } else if (newStatus === "Đã xác nhận" && currentStatus !== "Đã xác nhận") {
+                    } else if (targetStatus === "Đã xác nhận" && currentStatus !== "Đã xác nhận") {
                         title = "Duyệt đơn hàng thành công ✅";
                         content = `Đơn hàng #${orderId} của bạn đã được Admin duyệt thành công và đang được chuẩn bị.`;
-                    } else if (newStatus === "Đang giao" && currentStatus !== "Đang giao") {
+                    } else if (targetStatus === "Đang giao" && currentStatus !== "Đang giao") {
                         title = "Đơn hàng đang được giao 🚚";
                         content = `Đơn hàng #${orderId} của bạn đang trên đường giao đến. Vui lòng chú ý điện thoại để nhận hàng.`;
-                    } else if (newStatus === "Đã giao" && currentStatus !== "Đã giao") {
+                    } else if (targetStatus === "Đã giao" && currentStatus !== "Đã giao") {
                         title = "Giao hàng thành công 🎉";
                         content = `Đơn hàng #${orderId} đã được giao thành công. Cảm ơn bạn đã tin tưởng mua sắm!`;
                     }

@@ -36,11 +36,38 @@ function Profile() {
     };
 
     useEffect(() => {
-        const loadUser = () => {
+        const loadUser = async () => {
+            const token = localStorage.getItem("token");
             const storedUser = JSON.parse(localStorage.getItem("user"));
-            setUser(storedUser);
-            if (storedUser?.avatarUrl || storedUser?.HinhAnh) {
-                setAvatarUrl(storedUser.avatarUrl || storedUser.HinhAnh);
+            if (storedUser) {
+                setUser(storedUser);
+                if (storedUser?.avatarUrl || storedUser?.HinhAnh) {
+                    setAvatarUrl(storedUser.avatarUrl || storedUser.HinhAnh);
+                }
+            }
+
+            if (token) {
+                try {
+                    const res = await fetch(`${API_BASE}/api/auth/profile`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data && data.user) {
+                            const updated = {
+                                ...storedUser,
+                                ...data.user,
+                                avatarUrl: data.user.avatarUrl || data.user.HinhAnh || "",
+                                HinhAnh: data.user.HinhAnh || data.user.avatarUrl || "",
+                            };
+                            setUser(updated);
+                            setAvatarUrl(updated.avatarUrl || null);
+                            localStorage.setItem("user", JSON.stringify(updated));
+                        }
+                    }
+                } catch (err) {
+                    console.error("Lỗi đồng bộ hồ sơ:", err);
+                }
             }
         };
 

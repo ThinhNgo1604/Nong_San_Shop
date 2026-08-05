@@ -224,6 +224,37 @@ const verifyPassword = async (req, res) => {
     }
 };
 
+// ===== LẤY THÔNG TIN HỒ SƠ =====
+const getProfile = async (req, res) => {
+    try {
+        const maTK = req.user.maTK;
+        const user = await authModel.findById(maTK);
+
+        if (!user) {
+            return res.status(404).json({ message: "Không tìm thấy người dùng" });
+        }
+
+        const avatar = user.HinhAnh || user.AvatarKhachHang || "";
+
+        res.status(200).json({
+            user: {
+                maTK: user.MaTK,
+                email: user.Email,
+                vaiTro: (user.VaiTro || "Khách hàng").toString().trim(),
+                HoTen: user.HoTen || "",
+                SoDienThoai: user.SoDienThoai || "",
+                avatarUrl: avatar,
+                HinhAnh: avatar,
+                GioiTinh: user.GioiTinh || "",
+                NgaySinh: user.NgaySinh || "",
+            }
+        });
+    } catch (error) {
+        console.error("Lỗi lấy thông tin hồ sơ:", error);
+        res.status(500).json({ message: "Lỗi máy chủ" });
+    }
+};
+
 // ===== CẬP NHẬT HỒ SƠ =====
 const updateProfile = async (req, res) => {
     try {
@@ -238,9 +269,22 @@ const updateProfile = async (req, res) => {
 
         await authModel.updateProfile(maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl });
 
+        const updatedUser = await authModel.findById(maTK);
+        const avatar = updatedUser?.HinhAnh || updatedUser?.AvatarKhachHang || avatarUrl || "";
+
         res.status(200).json({
             message: "Cập nhật hồ sơ thành công",
-            user: { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl, HinhAnh: avatarUrl }
+            user: {
+                maTK: updatedUser?.MaTK || maTK,
+                email: updatedUser?.Email || req.user.email,
+                vaiTro: (updatedUser?.VaiTro || req.user.vaiTro || "Khách hàng").toString().trim(),
+                HoTen: updatedUser?.HoTen || hoTen || "",
+                SoDienThoai: updatedUser?.SoDienThoai || soDienThoai || "",
+                avatarUrl: avatar,
+                HinhAnh: avatar,
+                GioiTinh: updatedUser?.GioiTinh || gioiTinh || "",
+                NgaySinh: updatedUser?.NgaySinh || ngaySinh || "",
+            }
         });
 
     } catch (error) {
@@ -255,5 +299,6 @@ module.exports = {
     registerAdmin,
     changePassword,
     verifyPassword,
+    getProfile,
     updateProfile
 };

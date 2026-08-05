@@ -8,7 +8,11 @@ const findByEmail = async (email) => {
         .request()
         .input("Email", sql.VarChar, email)
         .query(`
-            SELECT tk.*, kh.HoTen, kh.GioiTinh, kh.NgaySinh, kh.HinhAnh AS AvatarKhachHang
+            SELECT tk.MaTK, tk.TenDangNhap, tk.Email, tk.SoDienThoai, tk.VaiTro, tk.TrangThai, tk.MatKhau,
+                   ISNULL(NULLIF(tk.HinhAnh, ''), kh.HinhAnh) AS HinhAnh,
+                   ISNULL(NULLIF(kh.HinhAnh, ''), tk.HinhAnh) AS AvatarKhachHang,
+                   ISNULL(NULLIF(kh.HoTen, ''), tk.TenDangNhap) AS HoTen,
+                   kh.GioiTinh, kh.NgaySinh
             FROM TaiKhoan tk
             LEFT JOIN KhachHang kh ON tk.MaTK = kh.MaTK
             WHERE tk.Email = @Email OR tk.TenDangNhap = @Email
@@ -25,7 +29,11 @@ const findById = async (maTK) => {
         .request()
         .input("MaTK", sql.Int, maTK)
         .query(`
-            SELECT tk.*, kh.HoTen, kh.GioiTinh, kh.NgaySinh, kh.HinhAnh AS AvatarKhachHang
+            SELECT tk.MaTK, tk.TenDangNhap, tk.Email, tk.SoDienThoai, tk.VaiTro, tk.TrangThai, tk.MatKhau,
+                   ISNULL(NULLIF(tk.HinhAnh, ''), kh.HinhAnh) AS HinhAnh,
+                   ISNULL(NULLIF(kh.HinhAnh, ''), tk.HinhAnh) AS AvatarKhachHang,
+                   ISNULL(NULLIF(kh.HoTen, ''), tk.TenDangNhap) AS HoTen,
+                   kh.GioiTinh, kh.NgaySinh
             FROM TaiKhoan tk
             LEFT JOIN KhachHang kh ON tk.MaTK = kh.MaTK
             WHERE tk.MaTK = @MaTK
@@ -109,6 +117,8 @@ const updatePassword = async (maTK, hashedPassword) => {
 const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, avatarUrl }) => {
     const pool = await connectDB();
 
+    const validAvatar = (avatarUrl && typeof avatarUrl === 'string' && avatarUrl.trim() !== '') ? avatarUrl.trim() : null;
+
     // Cập nhật số điện thoại và hình ảnh ở bảng TaiKhoan
     await pool
         .request()
@@ -117,7 +127,7 @@ const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, ava
         .input("SoDienThoai", sql.VarChar, soDienThoai || null)
         .input("GioiTinh", sql.NVarChar, gioiTinh || null)
         .input("NgaySinh", sql.Date, ngaySinh || null)
-        .input("HinhAnh", sql.NVarChar, avatarUrl || null)
+        .input("HinhAnh", sql.NVarChar, validAvatar)
         .query(`
             UPDATE TaiKhoan
             SET SoDienThoai = ISNULL(@SoDienThoai, SoDienThoai),
@@ -133,7 +143,7 @@ const updateProfile = async (maTK, { hoTen, soDienThoai, gioiTinh, ngaySinh, ava
         .input("SoDienThoai", sql.VarChar, soDienThoai || null)
         .input("GioiTinh", sql.NVarChar, gioiTinh || null)
         .input("NgaySinh", sql.Date, ngaySinh || null)
-        .input("HinhAnh", sql.NVarChar, avatarUrl || null)
+        .input("HinhAnh", sql.NVarChar, validAvatar)
         .query(`
             UPDATE KhachHang
             SET HoTen = ISNULL(@HoTen, HoTen),

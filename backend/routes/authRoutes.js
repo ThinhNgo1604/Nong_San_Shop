@@ -35,6 +35,13 @@ router.post(
 );
 
 
+// Lấy thông tin hồ sơ cá nhân
+router.get(
+    "/profile",
+    verifyToken,
+    authController.getProfile
+);
+
 // Cập nhật hồ sơ cá nhân
 router.put(
     "/update-profile",

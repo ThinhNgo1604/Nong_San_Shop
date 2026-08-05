@@ -1142,14 +1142,12 @@ function createMockPool() {
                             const tk = mockStore.TaiKhoan.find(u => Number(u.MaTK) === Number(d.MaTK) || (kh && Number(u.MaTK) === Number(kh.MaTK)));
                             const dc = (mockStore.DiaChi || []).find(c => Number(c.MaDC) === Number(d.MaDC));
 
-                            let customerName = d.TenKhachHang;
-                            if (!customerName || customerName === "Quản Trị Viên" || customerName === "Nguyễn Văn Khách") {
+                            let customerName = (kh && kh.HoTen && kh.HoTen !== "Quản Trị Viên") ? kh.HoTen : (tk && tk.HoTen && tk.HoTen !== "Quản Trị Viên" ? tk.HoTen : d.TenKhachHang);
+                            if (!customerName || customerName === "Quản Trị Viên") {
                                 if (kh && kh.HoTen && kh.HoTen !== "Quản Trị Viên") {
                                     customerName = kh.HoTen;
                                 } else if (tk && (tk.HoTen || tk.TenDangNhap || tk.Email)) {
                                     customerName = tk.HoTen || tk.TenDangNhap || tk.Email.split('@')[0];
-                                } else if (kh && kh.HoTen) {
-                                    customerName = kh.HoTen;
                                 } else {
                                     customerName = "Nguyễn Văn Khách";
                                 }

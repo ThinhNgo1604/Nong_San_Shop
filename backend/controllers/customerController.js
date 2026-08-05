@@ -4,7 +4,14 @@ const getAllCustomers = async (req, res) => {
 
     try {
 
-        const customers = await customerModel.getAllCustomers();
+        let customers = await customerModel.getAllCustomers();
+
+        // Lọc bỏ tài khoản Admin ra khỏi danh sách quản lý khách hàng
+        // Chỉ giữ lại khách hàng (không phải Admin)
+        customers = customers.filter(c => {
+            const isAdm = (c.VaiTro || "").toString().trim().toLowerCase() === "admin" || (c.Email || "").toLowerCase() === "admin@gmail.com";
+            return !isAdm;
+        });
 
         res.json(customers);
 

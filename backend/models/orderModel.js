@@ -7,8 +7,8 @@ const getAllOrders = async (status, fromDate, toDate, search) => {
     let query = `
         SELECT
             dh.MaDH,
-            COALESCE(NULLIF(dh.TenKhachHang, ''), NULLIF(kh.HoTen, N'Quản Trị Viên'), tk.HoTen, tk.TenDangNhap, kh.HoTen, N'Nguyễn Văn Khách') AS TenKhachHang,
-            COALESCE(NULLIF(dh.NguoiNhan, ''), dc.HoTen, NULLIF(dh.TenKhachHang, ''), kh.HoTen, N'Nguyễn Văn Khách') AS NguoiNhan,
+            COALESCE(NULLIF(kh.HoTen, N'Quản Trị Viên'), NULLIF(tk.HoTen, N'Quản Trị Viên'), NULLIF(dh.TenKhachHang, ''), tk.TenDangNhap, kh.HoTen, N'Nguyễn Văn Khách') AS TenKhachHang,
+            COALESCE(NULLIF(dh.NguoiNhan, ''), dc.HoTen, NULLIF(kh.HoTen, N'Quản Trị Viên'), NULLIF(dh.TenKhachHang, ''), N'Nguyễn Văn Khách') AS NguoiNhan,
             COALESCE(NULLIF(dh.SoDienThoai, ''), dc.SoDienThoai, kh.SoDienThoai, tk.SoDienThoai, '0987654321') AS SoDienThoai,
             COALESCE(NULLIF(dh.DiaChiChiTiet, ''), dc.DiaChiChiTiet, kh.DiaChi, N'123 Đường Nguyễn Huệ, Q.1, TP.HCM') AS DiaChiChiTiet,
             dh.NgayDat,

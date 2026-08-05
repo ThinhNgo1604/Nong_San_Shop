@@ -12,13 +12,13 @@ function Notification() {
 
     const storedUser = JSON.parse(localStorage.getItem("user"));
 
-    // Lấy dữ liệu từ API
-    useEffect(() => {
+    // Lấy dữ liệu từ API & Polling tự động
+    const fetchNotifs = () => {
         if (storedUser) {
             fetch(`${API_BASE}/api/notifications/${storedUser.maTK}`)
                 .then(res => res.json())
                 .then(data => {
-                    setNotifications(data);
+                    setNotifications(Array.isArray(data) ? data : []);
                     setIsLoading(false);
                 })
                 .catch(err => {
@@ -28,6 +28,16 @@ function Notification() {
         } else {
             setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        fetchNotifs();
+        const interval = setInterval(fetchNotifs, 3000);
+        window.addEventListener('updateNotificationCount', fetchNotifs);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('updateNotificationCount', fetchNotifs);
+        };
     }, []);
 
     // Hẹn giờ tự động cập nhật thời gian mỗi 1 phút
@@ -99,7 +109,8 @@ function Notification() {
 
     const getIconAndColor = (type) => {
         switch (type) {
-            case 'order': return { icon: '📦', color: '#17a2b8', bg: '#e0f7fa' };
+            case 'order':
+            case 'DonHang': return { icon: '📦', color: '#17a2b8', bg: '#e0f7fa' };
             case 'point': return { icon: '💎', color: '#ffc107', bg: '#fff8e1' };
             case 'voucher': return { icon: '🎟️', color: '#e91e63', bg: '#fce4ec' };
             case 'account': return { icon: '🔒', color: '#28a745', bg: '#e8f5e9' };

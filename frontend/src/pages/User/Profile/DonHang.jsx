@@ -42,6 +42,7 @@ function DonHang() {
 
             if (response.ok) {
                 alert("Hủy đơn hàng thành công!");
+                window.dispatchEvent(new CustomEvent('updateNotificationCount'));
                 if (typeof fetchOrders === "function") {
                     fetchOrders();
                 }
@@ -181,12 +182,17 @@ function DonHang() {
                             <tbody>
 
                                 {currentOrders.map((o) => {
-                                    const orderStatus = o.TrangThaiDonHang || o.TrangThai || "Chờ xác nhận";
-                                    const paymentStatus = o.TrangThaiThanhToan || "Chưa thanh toán";
-                                    // Đơn hàng đã được xác nhận hoặc đã thanh toán thì không thể hủy
-                                    const canCancel =
-                                        orderStatus === "Chờ xác nhận" &&
-                                        paymentStatus !== "Đã thanh toán";
+                                    const rawOrderStatus = o.TrangThaiDonHang || o.TrangThai || "Chờ xác nhận";
+                                    const rawPaymentStatus = o.TrangThaiThanhToan || "Chưa thanh toán";
+                                    const orderStatus = String(rawOrderStatus).trim();
+                                    const paymentStatus = String(rawPaymentStatus).trim();
+
+                                    const isPending =
+                                        orderStatus === "Chờ xác nhận" ||
+                                        orderStatus === "Đang xử lý" ||
+                                        orderStatus === "Chờ thanh toán";
+                                    const isNotPaid = paymentStatus !== "Đã thanh toán";
+                                    const canCancel = isPending && isNotPaid;
                                     const orderId = o.MaDH || o.maDH || o.id;
 
                                     return (

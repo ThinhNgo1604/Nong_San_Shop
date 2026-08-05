@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import './Home.css'; 
 import TreasureChestWidget from "../../components/TreasureChestWidget/TreasureChestWidget";
 import { getAllProducts } from "../../services/Client/productApi";
-import { getImageUrl } from "../../utils/api";
+import { getImageUrl, handleImageError } from "../../utils/api";
 import PromotionSection from "./PromotionSection";
 
 
@@ -213,7 +213,7 @@ const Home = () => {
                             src={getImageUrl(product.HinhAnh || product.image || product.hinh_anh)} 
                             alt={product.TenSP} 
                             style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px 8px 0 0' }}
-                            onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Image' }}
+                            onError={handleImageError}
                         />
                     </div>
 

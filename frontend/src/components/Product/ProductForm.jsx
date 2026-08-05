@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getImageUrl } from "../../utils/api";
+import { getImageUrl, handleImageError } from "../../utils/api";
 import { uploadImageToFirebase } from "../../services/firebase";
 
 function ProductForm({
@@ -247,6 +247,12 @@ const validate = () => {
                 }
             }
 
+            if (!imageUrl || imageUrl === "undefined" || imageUrl === "null") {
+                if (editingProduct && editingProduct.HinhAnh) {
+                    imageUrl = editingProduct.HinhAnh;
+                }
+            }
+
             const data = new FormData();
             data.append("TenSP", formData.TenSP);
             data.append("MaDM", formData.MaDM);
@@ -461,6 +467,7 @@ const resetForm = () => {
                                         src={preview || getImageUrl(formData.HinhAnh)}
                                         alt="Preview"
                                         style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #ddd' }}
+                                        onError={handleImageError}
                                     />
                                     <span className="small text-muted text-truncate" style={{ maxWidth: '90px' }}>
                                         {selectedFile ? selectedFile.name : (formData.HinhAnh ? "Ảnh hiện tại" : "")}

@@ -13,6 +13,7 @@ function Profile() {
 
     const [orders, setOrders] = useState([]);
     const [user, setUser] = useState(null);
+    const [apiPoints, setApiPoints] = useState(null);
 
     const [avatarUrl, setAvatarUrl] = useState(null);
     const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
@@ -43,8 +44,25 @@ function Profile() {
             }
         };
 
+        const fetchUserPoints = () => {
+            const token = localStorage.getItem("token");
+            if (token) {
+                fetch(`${API_BASE}/api/vouchers/redeemable`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && typeof data.totalPoints === 'number') {
+                        setApiPoints(data.totalPoints);
+                    }
+                })
+                .catch(() => {});
+            }
+        };
+
         loadUser();
         fetchOrders();
+        fetchUserPoints();
 
         window.addEventListener("userUpdated", loadUser);
         return () => window.removeEventListener("userUpdated", loadUser);
@@ -56,12 +74,19 @@ function Profile() {
         .filter(o => o.TrangThaiThanhToan === "Đã thanh toán")
         .reduce((sum, o) => sum + Number(o.TongTien), 0);
 
+    const totalSpentAll = orders.reduce((sum, o) => sum + Number(o.TongTien || 0), 0);
+
     const displayName = user ? (user.HoTen || user.email) : "Họ và tên";
     const avatarLetter = displayName ? displayName.charAt(0).toUpperCase() : "U";
 
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            alert("Kích thước file quá lớn (tối đa 5MB). Vui lòng chọn ảnh có dung lượng nhỏ hơn!");
+            return;
+        }
 
         const reader = new FileReader();
         reader.onloadend = async () => {
@@ -118,9 +143,11 @@ function Profile() {
     };
 
     // ==========================================
-    // LOGIC TÍNH HẠNG THÀNH VIÊN (RANK)
+    // LOGIC TÍNH HẠNG THÀNH VIÊN (RANK) - ĐỒNG BỘ VỚI QUẢN LÝ KHÁCH HÀNG
     // ==========================================
-    const diemXepHang = Math.floor(totalSpent / 500); 
+    const userStoredPoints = Number(user?.DiemThuong ?? user?.DiemXepHang ?? user?.diemThuong ?? user?.diemXepHang ?? 0);
+    const diemDonHang = Math.floor(totalSpentAll / 500);
+    const diemXepHang = Math.max(apiPoints !== null ? apiPoints : 0, userStoredPoints, diemDonHang); 
 
     let currentRank = "Đồng";
     let nextRank = "Bạc";

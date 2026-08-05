@@ -38,19 +38,25 @@ const getAllProductsClient = async (req, res) => {
         const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice) : null;
         const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice) : null;
 
-        // BỎ DÒNG CŨ: const products = await productModel.getAllProductsClient();
-        const rawProducts = await productModel.filterProductsByPrice(minPrice, maxPrice);
+        // Lấy toàn bộ sản phẩm khả dụng
+        const rawProducts = await productModel.getAllProductsClient();
 
-        // Chạy vòng lặp để cập nhật lại DonGia theo giờ hiện tại
-        const products = rawProducts.map(product => {
+        // Cập nhật DonGia thành giá thực tế đã giảm mà khách hàng trả
+        let products = rawProducts.map(product => {
             const finalPrice = calculatePrice(product);
             return {
                 ...product,
-                DonGia: finalPrice // Ghi đè giá thực tế khách phải trả tại thời điểm này
-                // GiaGoc vẫn được giữ nguyên trong object để Frontend hiển thị gạch chéo
+                DonGia: finalPrice // Ghi đè giá thực tế đã giảm
             };
         });
-    
+
+        // Lọc theo khoảng giá dựa trên giá đã giảm (DonGia)
+        if (minPrice !== null && !isNaN(minPrice)) {
+            products = products.filter(p => Number(p.DonGia) >= minPrice);
+        }
+        if (maxPrice !== null && !isNaN(maxPrice)) {
+            products = products.filter(p => Number(p.DonGia) <= maxPrice);
+        }
 
         res.json(products);
 
@@ -213,14 +219,23 @@ const updateProduct = async (req, res) => {
 
         const id = req.params.id;
 
-        let imagePath = (req.body.HinhAnh && req.body.HinhAnh !== "") ? req.body.HinhAnh : null;
+        let existingImg = null;
+        try {
+            const currentP = await productModel.getById(id);
+            if (currentP) existingImg = currentP.HinhAnh;
+        } catch (e) {}
+
+        let imagePath = (req.body.HinhAnh && req.body.HinhAnh !== "" && req.body.HinhAnh !== "undefined" && req.body.HinhAnh !== "null") ? req.body.HinhAnh : null;
         if (!imagePath && req.file) {
             imagePath = req.file.filename || (req.file.buffer ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null);
+        }
+        if (!imagePath && existingImg) {
+            imagePath = existingImg;
         }
 
         const product = {
             ...req.body,
-            HinhAnh: imagePath || req.body.HinhAnh
+            HinhAnh: imagePath
         };
 
         // Validate

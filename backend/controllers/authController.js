@@ -46,6 +46,21 @@ const login = async (req, res) => {
             return res.status(400).json({ message: "Email hoặc mật khẩu không đúng" });
         }
 
+        // Kiểm tra tài khoản bị khóa
+        const isAdminUser = (user.VaiTro || "").toString().trim().toLowerCase() === "admin" || (user.Email || "").toLowerCase() === "admin@gmail.com";
+        const isLocked = !isAdminUser && (
+            user.TrangThai === false ||
+            user.TrangThai === 0 ||
+            user.TrangThai === "0" ||
+            user.TrangThai === "false" ||
+            user.TrangThai === "Khoá" ||
+            user.TrangThai === "Đã khóa"
+        );
+
+        if (isLocked) {
+            return res.status(403).json({ message: "Tài khoản của bạn đã bị khóa! Vui lòng liên hệ quản trị viên." });
+        }
+
         const isMatch = await bcrypt.compare(password, user.MatKhau);
         if (!isMatch) {
             return res.status(400).json({ message: "Email hoặc mật khẩu không đúng" });

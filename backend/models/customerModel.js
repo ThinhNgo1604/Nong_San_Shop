@@ -32,10 +32,11 @@ const getAllCustomers = async () => {
 const updateStatus = async (id, status) => {
 
     const pool = await connectDB();
+    const boolStatus = status === true || status === 1 || status === "1" || status === "true";
 
     await pool.request()
         .input("MaKH", sql.Int, id)
-        .input("TrangThai", sql.Bit, status)
+        .input("TrangThai", sql.Bit, boolStatus)
         .query(`
             UPDATE TaiKhoan
             SET TrangThai = @TrangThai
@@ -43,7 +44,11 @@ const updateStatus = async (id, status) => {
                 SELECT MaTK
                 FROM KhachHang
                 WHERE MaKH = @MaKH
-            )
+            ) OR MaTK = @MaKH;
+
+            UPDATE KhachHang
+            SET TrangThai = @TrangThai
+            WHERE MaKH = @MaKH OR MaTK = @MaKH;
         `);
 
 };

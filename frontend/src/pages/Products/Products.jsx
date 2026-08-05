@@ -4,7 +4,7 @@ import { getAllProducts } from '../../services/Admin/productApi';
 import { getCategories } from '../../services/Admin/categoryApi';
 import './Products.css';
 import TreasureChestWidget from '../../components/TreasureChestWidget/TreasureChestWidget';
-import { getImageUrl } from '../../utils/api';
+import { getImageUrl, handleImageError } from '../../utils/api';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -277,7 +277,7 @@ const Products = () => {
                                     src={getImageUrl(product.HinhAnh)}
                                     alt={product.TenSP}
                                     className="product-card-img"
-                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Image'; }}
+                                    onError={handleImageError}
                                 />
                             ) : (
                                 <span className="product-card-icon">{getIcon(product.TenSP)}</span>

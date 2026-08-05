@@ -1,23 +1,24 @@
 const { connectDB, sql } = require("../config/db");
 
-const getAllOrders = async (status, fromDate, toDate) => {
+const getAllOrders = async (status, fromDate, toDate, search) => {
     const pool = await connectDB();
     
     // Khởi tạo câu truy vấn cơ bản với điều kiện WHERE 1=1 để dễ nối chuỗi
     let query = `
         SELECT
             dh.MaDH,
-            kh.HoTen AS TenKhachHang,
-            dc.HoTen AS NguoiNhan,
-            dc.SoDienThoai,
-            dc.DiaChiChiTiet,
+            COALESCE(NULLIF(dh.TenKhachHang, ''), NULLIF(kh.HoTen, N'Quản Trị Viên'), tk.HoTen, tk.TenDangNhap, kh.HoTen, N'Nguyễn Văn Khách') AS TenKhachHang,
+            COALESCE(NULLIF(dh.NguoiNhan, ''), dc.HoTen, NULLIF(dh.TenKhachHang, ''), kh.HoTen, N'Nguyễn Văn Khách') AS NguoiNhan,
+            COALESCE(NULLIF(dh.SoDienThoai, ''), dc.SoDienThoai, kh.SoDienThoai, tk.SoDienThoai, '0987654321') AS SoDienThoai,
+            COALESCE(NULLIF(dh.DiaChiChiTiet, ''), dc.DiaChiChiTiet, kh.DiaChi, N'123 Đường Nguyễn Huệ, Q.1, TP.HCM') AS DiaChiChiTiet,
             dh.NgayDat,
             dh.PhiVanChuyen,
             dh.TongTien,
             dh.TrangThaiDonHang,
             dh.TrangThaiThanhToan
         FROM DonHang dh
-        INNER JOIN KhachHang kh ON dh.MaKH = kh.MaKH
+        LEFT JOIN KhachHang kh ON dh.MaKH = kh.MaKH
+        LEFT JOIN TaiKhoan tk ON kh.MaTK = tk.MaTK OR dh.MaKH = tk.MaTK
         LEFT JOIN SoDiaChi dc ON dh.MaDC = dc.MaDC
         WHERE 1=1
     `;
@@ -28,6 +29,11 @@ const getAllOrders = async (status, fromDate, toDate) => {
     if (status) {
         query += ` AND dh.TrangThaiDonHang = @Status`;
         request.input("Status", sql.NVarChar, status);
+    }
+
+    if (search) {
+        query += ` AND (CAST(dh.MaDH AS VARCHAR) LIKE @Search OR dh.TenKhachHang LIKE @Search OR kh.HoTen LIKE @Search OR tk.TenDangNhap LIKE @Search OR tk.Email LIKE @Search OR dc.HoTen LIKE @Search OR dc.SoDienThoai LIKE @Search OR dh.SoDienThoai LIKE @Search)`;
+        request.input("Search", sql.NVarChar, `%${search}%`);
     }
     
     if (fromDate) {
@@ -85,8 +91,8 @@ const getOrdersByUser = async (maTK) => {
         .query(`
             SELECT dh.MaDH, dh.NgayDat, dh.TongTien, dh.TrangThaiDonHang, dh.TrangThaiThanhToan
             FROM DonHang dh
-            INNER JOIN KhachHang kh ON dh.MaKH = kh.MaKH
-            WHERE kh.MaTK = @MaTK
+            LEFT JOIN KhachHang kh ON dh.MaKH = kh.MaKH
+            WHERE kh.MaTK = @MaTK OR dh.MaKH = @MaTK OR kh.MaKH = @MaTK
             ORDER BY dh.NgayDat DESC
         `);
     return result.recordset;

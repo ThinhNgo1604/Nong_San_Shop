@@ -110,43 +110,21 @@ const getAllProductsClient = async () => {
 };
 
 const filterProductsByPrice = async (minPrice, maxPrice) => {
-    const pool = await connectDB();
-    const request = pool.request();
-    let query = `
-        SELECT
-            sp.MaSP,
-            sp.MaDM,
-            sp.TenSP,
-            sp.DonGia,
-            sp.GiaGoc,          -- Thêm dòng này
-            sp.GiamToiDa,       -- Thêm dòng này
-            sp.TuDongGiamGia,   -- Thêm dòng này
-            sp.MoTa,
-            sp.HinhAnh,
-            sp.SoLuongTon,
-            sp.DonViTinh,
-            dm.TenDM
-        FROM SanPham sp
-        INNER JOIN DanhMuc dm ON sp.MaDM = dm.MaDM
-        WHERE sp.TrangThai = 1
-    `;
+    const rawProducts = await getAllProductsClient();
+    let products = rawProducts.map(product => ({
+        ...product,
+        DonGia: calculatePrice(product)
+    }));
 
-    // Thêm điều kiện lọc giá tối thiểu
     if (minPrice !== null && !isNaN(minPrice)) {
-        query += ` AND sp.DonGia >= @minPrice`;
-        request.input("minPrice", sql.Decimal(18, 2), minPrice);
+        products = products.filter(p => Number(p.DonGia) >= minPrice);
     }
 
-    // Thêm điều kiện lọc giá tối đa
     if (maxPrice !== null && !isNaN(maxPrice)) {
-        query += ` AND sp.DonGia <= @maxPrice`;
-        request.input("maxPrice", sql.Decimal(18, 2), maxPrice);
+        products = products.filter(p => Number(p.DonGia) <= maxPrice);
     }
-    
-    query += ` ORDER BY sp.MaSP DESC`;
 
-    const result = await request.query(query);
-    return result.recordset;
+    return products;
 };
 
 const getById = async (id) => {

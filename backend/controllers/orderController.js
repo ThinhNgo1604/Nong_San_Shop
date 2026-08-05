@@ -5,10 +5,10 @@ const { connectDB, sql } = require("../config/db"); // THÊM DÒNG NÀY ĐỂ K�
 const getAllOrders = async (req, res) => {
     try {
         // Lấy các tham số lọc từ req.query
-        const { status, fromDate, toDate } = req.query;
+        const { status, fromDate, toDate, search } = req.query;
         
         // Truyền xuống model
-        const orders = await orderModel.getAllOrders(status, fromDate, toDate);
+        const orders = await orderModel.getAllOrders(status, fromDate, toDate, search);
         res.status(200).json(orders);
     } catch (error) {
         console.log(error);
@@ -49,6 +49,8 @@ const updateStatus = async (req, res) => {
         // 2. Khai báo luồng trạng thái
         const allowedTransitions = {
             "Chờ xác nhận": ["Chờ xác nhận", "Đã xác nhận", "Đã hủy"],
+            "Đang xử lý": ["Chờ xác nhận", "Đã xác nhận", "Đã hủy"],
+            "Chờ thanh toán": ["Chờ xác nhận", "Đã xác nhận", "Đã hủy"],
             "Đã xác nhận": ["Đã xác nhận", "Đang giao", "Đã hủy"],
             "Đang giao": ["Đang giao", "Đã giao", "Đã hủy"],
             "Đã giao": ["Đã giao"], 
@@ -57,8 +59,12 @@ const updateStatus = async (req, res) => {
 
         // 3. Kiểm tra tính hợp lệ của thao tác chuyển đổi
         if (newStatus === "Đã hủy") {
-            const currentPayment = currentOrder.TrangThaiThanhToan || "Chưa thanh toán";
-            if (currentStatus !== "Chờ xác nhận" || currentPayment === "Đã thanh toán") {
+            const currentPayment = (currentOrder.TrangThaiThanhToan || "Chưa thanh toán").toString().trim();
+            const normStatus = (currentOrder.TrangThaiDonHang || "Chờ xác nhận").toString().trim();
+            const isPending = normStatus === "Chờ xác nhận" || normStatus === "Đang xử lý" || normStatus === "Chờ thanh toán";
+            const isNotPaid = currentPayment !== "Đã thanh toán";
+
+            if (!isPending || !isNotPaid) {
                 return res.status(400).json({ 
                     message: "Đơn hàng đã được xác nhận hoặc đã thanh toán, không thể hủy!" 
                 });
@@ -94,25 +100,32 @@ const updateStatus = async (req, res) => {
 
             if (userResult.recordset.length > 0) {
                 const maTK = userResult.recordset[0].MaTK; 
-                let title = "";
-                let content = "";
+                if (maTK) {
+                    let title = "";
+                    let content = "";
 
-                if (newStatus === "Đã hủy" && currentStatus !== "Đã hủy") {
-                    title = "Đơn hàng đã bị hủy ❌";
-                    content = `Đơn hàng #${orderId} của bạn đã được hủy thành công.`;
-                } else if (newStatus === "Đã xác nhận" && currentStatus !== "Đã xác nhận") {
-                    title = "Đơn hàng đã được xác nhận ✅";
-                    content = `Đơn hàng #${orderId} của bạn đã được cửa hàng xác nhận và đang đóng gói.`;
-                } else if (newStatus === "Đang giao" && currentStatus !== "Đang giao") {
-                    title = "Đơn hàng đang được giao 🚚";
-                    content = `Đơn hàng #${orderId} của bạn đang trên đường giao đến. Vui lòng chú ý điện thoại để nhận hàng nhé.`;
-                } else if (newStatus === "Đã giao" && currentStatus !== "Đã giao") {
-                    title = "Giao hàng thành công 🎉";
-                    content = `Đơn hàng #${orderId} đã được giao thành công. Cảm ơn bạn đã tin tưởng và mua sắm!`;
-                }
+                    if (newStatus === "Đã hủy" && currentStatus !== "Đã hủy") {
+                        if (req.body && req.body.isUserCancel) {
+                            title = "Hủy đơn hàng thành công ❌";
+                            content = `Bạn đã hủy thành công đơn hàng #${orderId}.`;
+                        } else {
+                            title = "Duyệt đơn không thành công ❌";
+                            content = `Đơn hàng #${orderId} của bạn đã bị hủy / từ chối duyệt bởi Admin.`;
+                        }
+                    } else if (newStatus === "Đã xác nhận" && currentStatus !== "Đã xác nhận") {
+                        title = "Duyệt đơn hàng thành công ✅";
+                        content = `Đơn hàng #${orderId} của bạn đã được Admin duyệt thành công và đang được chuẩn bị.`;
+                    } else if (newStatus === "Đang giao" && currentStatus !== "Đang giao") {
+                        title = "Đơn hàng đang được giao 🚚";
+                        content = `Đơn hàng #${orderId} của bạn đang trên đường giao đến. Vui lòng chú ý điện thoại để nhận hàng.`;
+                    } else if (newStatus === "Đã giao" && currentStatus !== "Đã giao") {
+                        title = "Giao hàng thành công 🎉";
+                        content = `Đơn hàng #${orderId} đã được giao thành công. Cảm ơn bạn đã tin tưởng mua sắm!`;
+                    }
 
-                if (title !== "") {
-                    await notificationModel.createNotification(maTK, 'order', title, content);
+                    if (title !== "") {
+                        await notificationModel.createNotification(maTK, 'order', title, content);
+                    }
                 }
             }
         } catch (notifyErr) {

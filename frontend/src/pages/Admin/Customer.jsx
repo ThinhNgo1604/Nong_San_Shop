@@ -61,7 +61,7 @@ function Customer() {
 
             );
 
-            alert("Cập nhật thành công!");
+            alert(isActive ? "Đã KHÓA tài khoản thành công!" : "Đã MỞ KHÓA tài khoản thành công!");
 
             fetchCustomers();
 

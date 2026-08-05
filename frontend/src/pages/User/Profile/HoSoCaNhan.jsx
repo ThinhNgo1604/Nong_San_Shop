@@ -183,6 +183,10 @@ function HoSoCaNhan() {
                             onChange={(e) => {
                                 const file = e.target.files[0];
                                 if (!file) return;
+                                if (file.size > 5 * 1024 * 1024) {
+                                    alert("Kích thước file quá lớn (tối đa 5MB). Vui lòng chọn ảnh có dung lượng nhỏ hơn!");
+                                    return;
+                                }
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
                                     setAvatarUrl(reader.result);

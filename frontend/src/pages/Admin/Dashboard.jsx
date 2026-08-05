@@ -188,24 +188,13 @@ function Dashboard() {
 
             </div>
 
-            <RevenueChart
-
-                chartData={chartData}
-
-            />
-
-            <div className="row mt-4">
-
-                <div className="col-lg-6">
-
-                    <TopProducts
-
-                        data={topProducts}
-
-                    />
-
+            <div className="row mt-3">
+                <div className="col-lg-7">
+                    <RevenueChart chartData={chartData} />
                 </div>
-
+                <div className="col-lg-5">
+                    <TopProducts data={topProducts} />
+                </div>
             </div>
         </div>
 

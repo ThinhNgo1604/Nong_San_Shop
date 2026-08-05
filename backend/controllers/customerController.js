@@ -25,7 +25,7 @@ const updateStatus = async (req, res) => {
     try {
 
         const customers = await customerModel.getAllCustomers();
-        const targetCustomer = customers.find(c => Number(c.MaKH) === Number(req.params.id));
+        const targetCustomer = customers.find(c => Number(c.MaKH) === Number(req.params.id) || Number(c.MaTK) === Number(req.params.id));
 
         if (targetCustomer && (targetCustomer.VaiTro === "Admin" || targetCustomer.Email === "admin@gmail.com")) {
             return res.status(400).json({
@@ -39,14 +39,14 @@ const updateStatus = async (req, res) => {
         );
 
         res.json({
-            message: "Cập nhật thành công"
+            message: "Cập nhật trạng thái thành công"
         });
 
     } catch (error) {
 
         console.log(error);
 
-        res.status(500).json(error);
+        res.status(500).json({ message: "Lỗi máy chủ khi cập nhật trạng thái" });
 
     }
 

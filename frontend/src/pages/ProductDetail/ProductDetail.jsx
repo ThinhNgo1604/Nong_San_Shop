@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import './ProductDetail.css';
 import TreasureChestWidget from '../../components/TreasureChestWidget/TreasureChestWidget';
-import { API_BASE, getImageUrl } from '../../utils/api';
+import { API_BASE, getImageUrl, handleImageError } from '../../utils/api';
 
 const ProductDetail = () => {
   const { id } = useParams(); 
@@ -189,7 +189,7 @@ const ProductDetail = () => {
       <div className="pd-container">
         <div className="pd-card">
           <div className="pd-image" style={{ padding: 0, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-            <img src={getImageUrl(product.HinhAnh || product.image || product.hinh_anh)} alt={product.TenSP} style={{ maxWidth: '100%', maxHeight: '350px', objectFit: 'contain' }} onError={(e) => { e.target.src = 'https://via.placeholder.com/350?text=No+Image' }} />
+            <img src={getImageUrl(product.HinhAnh || product.image || product.hinh_anh)} alt={product.TenSP} style={{ maxWidth: '100%', maxHeight: '350px', objectFit: 'contain' }} onError={handleImageError} />
           </div>
 
           <div className="pd-info">
@@ -335,7 +335,7 @@ const ProductDetail = () => {
                         </div>
                     )}
                     <div className="related-icon" style={{ padding: 0, overflow: 'hidden', height: '120px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <img src={getImageUrl(item.HinhAnh || item.image || item.hinh_anh)} alt={item.TenSP} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => { e.target.src = 'https://via.placeholder.com/120?text=No+Image' }} />
+                        <img src={getImageUrl(item.HinhAnh || item.image || item.hinh_anh)} alt={item.TenSP} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={handleImageError} />
                     </div>
                     <h4 style={{ color: '#2e7d32', margin: '10px 0 5px 0' }}>{item.TenSP}</h4>
                     

@@ -28,6 +28,17 @@ async function seedCompleteFirebaseData() {
                 VaiTro: "KhachHang",
                 TrangThai: true,
                 NgayTao: new Date().toISOString()
+            },
+            {
+                MaTK: 3,
+                TenDangNhap: "nlhthinh95",
+                Email: "nlhthinh95@gmail.com",
+                MatKhau: hashedPasswordUser,
+                SoDienThoai: "0912345678",
+                VaiTro: "KhachHang",
+                HoTen: "nlhthinh95",
+                TrangThai: true,
+                NgayTao: new Date().toISOString()
             }
         ],
         KhachHang: [
@@ -47,6 +58,15 @@ async function seedCompleteFirebaseData() {
                 Email: "user@gmail.com",
                 SoDienThoai: "0987654321",
                 DiaChi: "123 Đường Nguyễn Huệ, Q.1, TP.HCM",
+                NgayTao: new Date().toISOString()
+            },
+            {
+                MaKH: 3,
+                MaTK: 3,
+                HoTen: "nlhthinh95",
+                Email: "nlhthinh95@gmail.com",
+                SoDienThoai: "0912345678",
+                DiaChi: "456 Nguyễn Thị Minh Khai, Q.3, TP.HCM",
                 NgayTao: new Date().toISOString()
             }
         ],
@@ -76,12 +96,15 @@ async function seedCompleteFirebaseData() {
             { MaVoucher: 3, MaCode: "TETHANHPHUC", TenVoucher: "Ưu đãi Tết Thanh Phúc 20k", PhanTramGiam: 15, GiamToiDa: 20000, GiaTriToiThieu: 150000, SoLuong: 80, TrangThai: true }
         ],
         DonHang: [
-            { MaDH: 101, MaKH: 2, TenNguoiNhan: "Nguyễn Văn Khách", SoDienThoai: "0987654321", DiaChi: "123 Đường Nguyễn Huệ, Q.1, TP.HCM", TongTien: 212000, TrangThai: "Đã giao", NgayTao: new Date().toISOString() },
-            { MaDH: 102, MaKH: 2, TenNguoiNhan: "Nguyễn Văn Khách", SoDienThoai: "0987654321", DiaChi: "123 Đường Nguyễn Huệ, Q.1, TP.HCM", TongTien: 125000, TrangThai: "Đang xử lý", NgayTao: new Date().toISOString() }
+            { MaDH: 101, MaKH: 2, TenKhachHang: "Nguyễn Văn Khách", TenNguoiNhan: "Nguyễn Văn Khách", SoDienThoai: "0987654321", DiaChi: "123 Đường Nguyễn Huệ, Q.1, TP.HCM", TongTien: 212000, TrangThai: "Đã giao", NgayTao: new Date(Date.now() - 86400000 * 3).toISOString() },
+            { MaDH: 102, MaKH: 3, TenKhachHang: "nlhthinh95", TenNguoiNhan: "nlhthinh95", SoDienThoai: "0912345678", DiaChi: "123 Nguyễn Văn Linh, Q.7, TP.HCM", TongTien: 125000, TrangThai: "Chờ xác nhận", NgayTao: new Date().toISOString() },
+            { MaDH: 106, MaKH: 3, TenKhachHang: "nlhthinh95", TenNguoiNhan: "nlhthinh95", SoDienThoai: "0912345678", DiaChi: "456 Nguyễn Thị Minh Khai, Q.3, TP.HCM", TongTien: 310000, TrangThai: "Đã xác nhận", NgayTao: new Date(Date.now() - 3600000).toISOString() }
         ],
         ChiTietDonHang: [
             { MaDH: 101, MaSP: 1, TenSP: "Táo Envy New Zealand", SoLuong: 2, DonGia: 85000, ThanhTien: 170000 },
-            { MaDH: 102, MaSP: 3, TenSP: "Dâu Tây Đà Lạt Giống Mỹ", SoLuong: 1, DonGia: 129000, ThanhTien: 129000 }
+            { MaDH: 102, MaSP: 3, TenSP: "Dâu Tây Đà Lạt Giống Mỹ", SoLuong: 1, DonGia: 129000, ThanhTien: 129000 },
+            { MaDH: 106, MaSP: 1, TenSP: "Táo Envy New Zealand", SoLuong: 2, DonGia: 85000, ThanhTien: 170000 },
+            { MaDH: 106, MaSP: 2, TenSP: "Cam Sành Tiền Giang", SoLuong: 3, DonGia: 38000, ThanhTien: 114000 }
         ],
         ThongBao: [
             { MaTB: 1, MaKH: 2, TieuDe: "Đơn hàng đã được giao thành công", NoiDung: "Đơn hàng #101 của bạn đã giao hoàn tất. Cảm ơn bạn đã mua hàng tại Nông Sản Shop!", DaDoc: false, NgayTao: new Date().toISOString() }

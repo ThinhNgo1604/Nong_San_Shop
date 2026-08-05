@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { API_BASE, getImageUrl } from '../../../utils/api';
+import { API_BASE, getImageUrl, handleImageError } from '../../../utils/api';
 
 function MyDanhGia() {
     const [myReviews, setMyReviews] = useState([]);
@@ -30,7 +30,7 @@ function MyDanhGia() {
                                 src={getImageUrl(rv.HinhAnh)} 
                                 alt={rv.TenSP} 
                                 style={{ width: '80px', height: '80px', objectFit: 'contain', border: '1px solid #eee', borderRadius: '4px', marginRight: '15px' }}
-                                onError={(e) => { e.target.src = 'https://via.placeholder.com/80' }}
+                                onError={handleImageError}
                             />
                             <div className="flex-grow-1">
                                 <Link to={`/product/${rv.MaSP}`} className="fw-bold text-dark text-decoration-none d-block mb-1">{rv.TenSP}</Link>

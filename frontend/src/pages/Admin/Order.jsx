@@ -12,6 +12,7 @@ function Order() {
 
     // States cho bộ lọc
     const [filterStatus, setFilterStatus] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
 
     const itemsPerPage = 8; 
@@ -20,18 +21,24 @@ function Order() {
 
     useEffect(() => {
         fetchOrders();
-    }, []);
+    }, [filterStatus, filterFromDate, filterToDate, searchTerm]);
 
     // Hàm gọi API kèm params
-    async function fetchOrders() {
+    async function fetchOrders(statusOverride, fromDateOverride, toDateOverride, searchOverride) {
         try {
             const params = {};
-            if (filterStatus) params.status = filterStatus;
-            if (filterFromDate) params.fromDate = filterFromDate;
-            if (filterToDate) params.toDate = filterToDate;
+            const s = statusOverride !== undefined ? statusOverride : filterStatus;
+            const from = fromDateOverride !== undefined ? fromDateOverride : filterFromDate;
+            const to = toDateOverride !== undefined ? toDateOverride : filterToDate;
+            const kw = searchOverride !== undefined ? searchOverride : searchTerm;
+
+            if (s) params.status = s;
+            if (from) params.fromDate = from;
+            if (to) params.toDate = to;
+            if (kw) params.search = kw;
 
             const res = await getOrders(params);
-            setOrders(res.data);
+            setOrders(Array.isArray(res.data) ? res.data : []);
             setCurrentPage(1);
         } catch (error) {
             console.log(error);
@@ -64,10 +71,10 @@ function Order() {
     // Hàm đặt lại bộ lọc
     const handleResetFilter = () => {
         setFilterStatus("");
+        setSearchTerm("");
         setFilterFromDate("");
         setFilterToDate("");
-        // Sau khi clear state, gọi lại api toàn bộ
-        setTimeout(() => fetchOrders(), 0); 
+        fetchOrders("", "", "", "");
     };
     const totalPages = Math.ceil(orders.length / itemsPerPage);
 
@@ -86,6 +93,16 @@ function Order() {
                 <div className="card-body">
                     <div className="row g-3 align-items-end">
                         <div className="col-md-3">
+                            <label className="form-label">Tìm kiếm</label>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Tên, SĐT, Mã đơn..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="col-md-3">
                             <label className="form-label">Trạng thái đơn hàng</label>
                             <select 
                                 className="form-select" 
@@ -100,7 +117,7 @@ function Order() {
                                 <option value="Đã hủy">Đã hủy</option>
                             </select>
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-md-2">
                             <label className="form-label">Từ ngày</label>
                             <input 
                                 type="date" 
@@ -109,7 +126,7 @@ function Order() {
                                 onChange={(e) => setFilterFromDate(e.target.value)}
                             />
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-md-2">
                             <label className="form-label">Đến ngày</label>
                             <input 
                                 type="date" 
@@ -118,12 +135,12 @@ function Order() {
                                 onChange={(e) => setFilterToDate(e.target.value)}
                             />
                         </div>
-                        <div className="col-md-3">
-                            <button className="btn btn-primary me-2" onClick={fetchOrders}>
+                        <div className="col-md-2 d-flex">
+                            <button className="btn btn-primary me-2 w-100" onClick={() => fetchOrders()}>
                                 Lọc
                             </button>
-                            <button className="btn btn-secondary" onClick={handleResetFilter}>
-                                Xóa lọc
+                            <button className="btn btn-outline-secondary w-100" onClick={handleResetFilter}>
+                                Xóa
                             </button>
                         </div>
                     </div>

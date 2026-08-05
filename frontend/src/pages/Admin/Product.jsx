@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getImageUrl } from "../../utils/api";
+import { getImageUrl, handleImageError } from "../../utils/api";
 import {
     getProducts,
     createProduct,
@@ -172,17 +172,21 @@ function Product() {
                                 <td>{product.TenSP}</td>
                                 
                                 <td>
-                            <img
-                                src={getImageUrl(product.HinhAnh)}
-                                alt={product.TenSP}
-                                width="70"
-                                height="70"
-                                style={{
-                                    objectFit: "cover",
-                                    borderRadius: "8px"
-                                }}
-                            />
-                        </td>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <img
+                                            src={getImageUrl(product.HinhAnh)}
+                                            alt={product.TenSP || "Sản phẩm"}
+                                            width="60"
+                                            height="60"
+                                            style={{
+                                                objectFit: "cover",
+                                                borderRadius: "8px",
+                                                border: "1px solid #e2e8f0"
+                                            }}
+                                            onError={handleImageError}
+                                        />
+                                    </div>
+                                </td>
 
                                 <td>{product.TenDM}</td>
 

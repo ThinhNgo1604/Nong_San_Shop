@@ -45,7 +45,7 @@ export async function uploadImageToFirebase(file) {
           const canvas = document.createElement("canvas");
           let width = img.width;
           let height = img.height;
-          const maxDim = 800;
+          const maxDim = 400;
           if (width > maxDim || height > maxDim) {
             if (width > height) {
               height = Math.round((height * maxDim) / width);
@@ -59,7 +59,7 @@ export async function uploadImageToFirebase(file) {
           canvas.height = height;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
           resolve(dataUrl);
         };
         img.onerror = () => resolve(e.target.result);

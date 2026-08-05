@@ -135,18 +135,45 @@ const checkoutCart = async (req, res) => {
 
         console.log("DEBUG resultGuest:", resultGuest);
         const maDH = (resultGuest && resultGuest.recordset && resultGuest.recordset[0]) ? (resultGuest.recordset[0].maDH || resultGuest.recordset[0].MaDH) : null;
+        
+        if (maTK) {
+            try {
+                await notificationModel.createNotification(
+                    maTK,
+                    'order',
+                    'Tạo đơn hàng thành công 📦',
+                    `Đơn hàng #${maDH} đã được tạo thành công với tổng tiền ${Number(tongTien || 0).toLocaleString('vi-VN')}đ và đang chờ admin duyệt.`
+                );
+            } catch (notifErr) {
+                console.error("Lỗi tạo thông báo đơn hàng mới:", notifErr);
+            }
+        }
+
         return res.json({ message: "Chốt đơn thành công!", maDH });
     } 
 
     // ===== NHÁNH 2: LOGIC USER CÓ TÀI KHOẢN (SỬ DỤNG REDIS) =====
     if (!tongTien || tongTien <= 0) return res.status(400).json({ message: "Tổng tiền không hợp lệ" });
 
-    const khResult = await pool.request()
+    let khResult = await pool.request()
       .input('MaTK', sql.Int, maTK)
-      .query('SELECT MaKH FROM KhachHang WHERE MaTK = @MaTK');
+      .query('SELECT MaKH, HoTen FROM KhachHang WHERE MaTK = @MaTK OR MaKH = @MaTK');
 
-    if (khResult.recordset.length === 0) return res.status(400).json({message: "Tài khoản không hợp lệ"});
-    const realMaKH = khResult.recordset[0].MaKH;
+    let realMaKH;
+    if (khResult.recordset.length === 0) {
+        const tkRes = await pool.request().input('MaTK', sql.Int, maTK).query('SELECT Email, TenDangNhap, SoDienThoai FROM TaiKhoan WHERE MaTK = @MaTK');
+        const tkUser = tkRes.recordset[0] || {};
+        const userName = tkUser.TenDangNhap || (tkUser.Email ? tkUser.Email.split('@')[0] : 'Khách Hàng');
+        const createKh = await pool.request()
+            .input('MaTK', sql.Int, maTK)
+            .input('HoTen', sql.NVarChar(100), userName)
+            .input('Email', sql.VarChar(100), tkUser.Email || '')
+            .input('SoDienThoai', sql.VarChar(20), tkUser.SoDienThoai || '')
+            .query('INSERT INTO KhachHang (MaTK, HoTen, Email, SoDienThoai, NgayTao) OUTPUT INSERTED.MaKH VALUES (@MaTK, @HoTen, @Email, @SoDienThoai, GETDATE())');
+        realMaKH = createKh.recordset[0].MaKH;
+    } else {
+        realMaKH = khResult.recordset[0].MaKH;
+    }
 
     let finalMaDC;
     if (!maDC) {
@@ -241,6 +268,20 @@ const checkoutCart = async (req, res) => {
     await redisClient.del(redisKey);
 
     const maDH = (resultUser && resultUser.recordset && resultUser.recordset[0]) ? (resultUser.recordset[0].maDH || resultUser.recordset[0].MaDH) : null;
+    
+    if (maTK) {
+        try {
+            await notificationModel.createNotification(
+                maTK,
+                'order',
+                'Tạo đơn hàng thành công 📦',
+                `Đơn hàng #${maDH} đã được tạo thành công với tổng tiền ${Number(tongTien || 0).toLocaleString('vi-VN')}đ và đang chờ admin duyệt.`
+            );
+        } catch (notifErr) {
+            console.error("Lỗi tạo thông báo đơn hàng mới:", notifErr);
+        }
+    }
+
     return res.json({ message: "Chốt đơn thành công!", maDH });
   } catch (error) {
     console.error("Lỗi khi chốt đơn:", error);

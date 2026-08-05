@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Cart.css';
 import TreasureChestWidget from "../../components/TreasureChestWidget/TreasureChestWidget";
-import { API_BASE, getImageUrl } from "../../utils/api";
+import { API_BASE, getImageUrl, handleImageError } from "../../utils/api";
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
@@ -376,7 +376,7 @@ const Cart = () => {
                             src={getImageUrl(item.HinhAnh || item.image || item.hinh_anh)} 
                             alt={item.name || item.TenSP} 
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                            onError={(e) => { e.target.src = 'https://via.placeholder.com/60?text=No+Img' }}
+                            onError={handleImageError}
                           />
                         </div>
                         <h4 className="product-name">{item.name || item.TenSP}</h4>

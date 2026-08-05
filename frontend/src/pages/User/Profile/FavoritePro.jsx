@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE, getImageUrl } from '../../../utils/api';
+import { API_BASE, getImageUrl, handleImageError } from '../../../utils/api';
 
 function FavoritePro() {
     const [favorites, setFavorites] = useState([]);
@@ -91,7 +91,7 @@ function FavoritePro() {
                                     className="card-img-top p-3" 
                                     alt={item.TenSP} 
                                     style={{ height: '200px', objectFit: 'contain' }}
-                                    onError={(e) => { e.target.src = 'https://via.placeholder.com/200?text=No+Image' }}
+                                    onError={handleImageError}
                                 />
                                 <div className="card-body text-center border-top">
                                     <h6 className="card-title text-success text-truncate">{item.TenSP}</h6>
